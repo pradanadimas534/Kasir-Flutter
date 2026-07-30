@@ -7,7 +7,6 @@ import '../services/xml_service.dart';
 import '../services/sheets_service.dart';
 import '../services/drive_service.dart';
 
-// ── Model Keranjang ──────────────────────────────────────────────
 class CartItem {
   final int    id;
   final String name;
@@ -42,9 +41,8 @@ class KasirProvider extends ChangeNotifier {
   bool   isLoggedIn = false;
   String status     = '';
 
-  // Pendapatan hari ini (dari Sheets)
-  double pendapatanHariIni  = 0;
-  int    transaksiHariIni   = 0;
+  double pendapatanHariIni = 0;
+  int    transaksiHariIni  = 0;
 
   // ── FORMAT ───────────────────────────────────────────────────────
   final _rupiah = NumberFormat.currency(
@@ -98,7 +96,7 @@ class KasirProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    // Coba login diam-diam
+    // Coba login diam-diam (pakai akun yang sudah pernah login)
     final ok = await _auth.signIn();
 
     if (ok) {
@@ -115,49 +113,58 @@ class KasirProvider extends ChangeNotifier {
     status     = 'Memuat data...';
     notifyListeners();
 
-    // 1. Cek apakah user sudah terdaftar di Sheets
-    final terdaftar = await _sheets.isUserRegistered(uid);
-    if (!terdaftar) {
-      status = 'Mendaftarkan akun...';
-      notifyListeners();
-      await _sheets.registerUser(
-        uid:   uid,
-        nama:  userName,
-        email: userEmail,
-      );
-    }
+    // ── LANGKAH 1: Daftarkan user ke Sheets jika belum ada ────────
+    // Jalankan di background, tidak perlu tunggu
+    _sheets.isUserRegistered(uid).then((terdaftar) {
+      if (!terdaftar) {
+        _sheets.registerUser(
+          uid:   uid,
+          nama:  userName,
+          email: userEmail,
+        );
+      }
+    });
 
-    // 2. Cek XML lokal
+    // ── LANGKAH 2: Cek XML lokal ──────────────────────────────────
     final adaLokal = await _xml.hasData(uid);
 
     if (adaLokal) {
-      // Ada data lokal → langsung pakai
+      // ✅ Ada data lokal → langsung pakai, tidak perlu cek Drive
       status = 'Memuat data lokal...';
       notifyListeners();
       items = await _xml.readAll(uid);
     } else {
-      // Tidak ada lokal → coba download dari Drive
-      status = 'Mencari backup di Drive...';
+      // ❌ Tidak ada lokal → pertama kali login di HP ini
+      // Coba download dari Drive (kalau pernah backup sebelumnya)
+      status = 'HP baru terdeteksi, mencari backup...';
       notifyListeners();
 
-      final adaDrive = await _drive.hasCloudData(uid);
-      if (adaDrive) {
-        status = 'Mengunduh data dari Drive...';
-        notifyListeners();
-        final ok = await _drive.downloadXml(uid);
-        if (ok) {
-          items = await _xml.readAll(uid);
-          status = 'Data berhasil dipulihkan ✓';
+      bool restored = false;
+      try {
+        final adaDrive = await _drive.hasCloudData(uid);
+        if (adaDrive) {
+          status = 'Memulihkan data dari backup...';
+          notifyListeners();
+          final ok = await _drive.downloadXml(uid);
+          if (ok) {
+            items    = await _xml.readAll(uid);
+            restored = true;
+            status   = 'Data berhasil dipulihkan ✓';
+          }
         }
-      } else {
-        // Belum ada data sama sekali → mulai kosong
+      } catch (_) {
+        // Tidak ada internet / Drive error → mulai kosong
+      }
+
+      if (!restored) {
+        // Benar-benar baru, mulai dari kosong
         items  = [];
-        status = 'Akun baru — belum ada data barang';
+        status = '';
       }
     }
 
-    // 3. Load pendapatan hari ini dari Sheets
-    await _loadPendapatan();
+    // ── LANGKAH 3: Load pendapatan hari ini (background) ──────────
+    _loadPendapatan();
 
     isLoading = false;
     notifyListeners();
@@ -169,6 +176,7 @@ class KasirProvider extends ChangeNotifier {
       final data = await _sheets.getPendapatanHariIni(uid);
       pendapatanHariIni = data['total']     as double;
       transaksiHariIni  = data['transaksi'] as int;
+      notifyListeners();
     } catch (_) {
       pendapatanHariIni = 0;
       transaksiHariIni  = 0;
@@ -194,8 +202,9 @@ class KasirProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    // Upload XML dulu sebelum logout
-    await _drive.uploadXml(uid);
+    // Upload XML ke Drive sebelum logout (background)
+    try { _drive.uploadXml(uid); } catch (_) {}
+
     await _auth.signOut();
 
     items             = [];
@@ -281,17 +290,16 @@ class KasirProvider extends ChangeNotifier {
     final totalBayar = total;
     cart.clear();
 
-    // Simpan ke XML lokal
+    // 1. Simpan ke XML lokal dulu (pasti berhasil)
     await _xml.writeAll(uid, items);
 
-    // Kirim ke Sheets (pendapatan hari ini)
-    await _sheets.tambahPendapatan(uid: uid, total: totalBayar);
+    // 2. Kirim pendapatan ke Sheets (background, tidak block UI)
+    _sheets.tambahPendapatan(uid: uid, total: totalBayar)
+        .then((_) => _loadPendapatan())
+        .catchError((_) {});
 
-    // Upload XML ke Drive di background
-    _drive.uploadXml(uid);
-
-    // Reload pendapatan
-    await _loadPendapatan();
+    // 3. Upload XML ke Drive (background)
+    _drive.uploadXml(uid).catchError((_) {});
 
     notifyListeners();
   }
@@ -319,15 +327,19 @@ class KasirProvider extends ChangeNotifier {
       stock: stock, sold: 0, type: type, unit: unit,
     );
 
+    // Simpan ke lokal
     items = await _xml.addItem(uid, newItem);
-    _drive.uploadXml(uid); // upload background
+
+    // Backup ke Drive di background
+    _drive.uploadXml(uid).catchError((_) {});
+
     notifyListeners();
   }
 
   Future<void> hapusItem(int id) async {
     cart.removeWhere((c) => c.id == id);
     items = await _xml.deleteItem(uid, id);
-    _drive.uploadXml(uid);
+    _drive.uploadXml(uid).catchError((_) {});
     notifyListeners();
   }
 
@@ -350,10 +362,10 @@ class KasirProvider extends ChangeNotifier {
   // ════════════════════════════════════════════════════════════════
   //  STATISTIK
   // ════════════════════════════════════════════════════════════════
-  int get totalBarang  => items.length;
-  int get stokMenipis  => items.where((i) =>
+  int get totalBarang => items.length;
+  int get stokMenipis => items.where((i) =>
       i.stock > 0 && i.stock <= getThreshold(i)).length;
-  int get stokHabis    => items.where((i) => i.stock <= 0).length;
+  int get stokHabis   => items.where((i) => i.stock <= 0).length;
 
   List<ItemModel> get restockList =>
       items.where((i) => i.stock <= getThreshold(i)).toList();
