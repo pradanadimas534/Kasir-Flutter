@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
@@ -9,9 +10,7 @@ class AuthService {
     scopes: [
       'email',
       'profile',
-      // Akses Google Sheets
       'https://www.googleapis.com/auth/spreadsheets',
-      // Akses Google Drive
       'https://www.googleapis.com/auth/drive.file',
     ],
   );
@@ -27,14 +26,15 @@ class AuthService {
   // ── Login ────────────────────────────────────────────────────────
   Future<bool> signIn() async {
     try {
-      // Coba login diam-diam dulu (kalau sudah pernah login)
+      // Coba restore sesi login sebelumnya
       _account = await _googleSignIn.signInSilently();
 
-      // Belum pernah login → tampilkan popup
+      // Jika tidak ada sesi tersimpan, munculkan dialog pilihkun
       _account ??= await _googleSignIn.signIn();
 
       return _account != null;
     } catch (e) {
+      debugPrint('Error pada Google SignIn: $e');
       return false;
     }
   }
@@ -45,18 +45,26 @@ class AuthService {
     _account = null;
   }
 
-  // ── Ambil auth headers untuk request ke Google API ───────────────
+  // ── Ambil auth headers (Auto Restore & Refresh Token) ────────────
   Future<Map<String, String>> getAuthHeaders() async {
-    if (_account == null) throw Exception('Belum login');
-    return await _account!.authHeaders;
-  }
-
-  // ── Refresh token jika expired ───────────────────────────────────
-  Future<void> refreshIfNeeded() async {
-    try {
-      await _account?.authentication;
-    } catch (_) {
-      await signIn();
+    // 1. Jika app baru dibuka & _account null, coba restore akun dulu
+    if (_account == null) {
+      _account = await _googleSignIn.signInSilently();
     }
+
+    // 2. Jika masih null, artinya user memang harus login ulang
+    if (_account == null) {
+      throw Exception('User belum login. Silakan login terlebih dahulu.');
+    }
+
+    // 3. Ambil header terbaru (termasuk Authorization Bearer Token)
+    final headers = await _account!.authHeaders;
+    
+    // Periksa apakah token berhasil didapat
+    if (!headers.containsKey('Authorization')) {
+      throw Exception('Gagal mendapatkan token OAuth dari Google.');
+    }
+
+    return headers;
   }
 }

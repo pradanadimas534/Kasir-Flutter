@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart'; // Ditambahkan untuk debugPrint
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
@@ -9,9 +10,7 @@ class SheetsService {
 
   final _auth = AuthService();
 
-  // ── Ganti dengan Spreadsheet ID milik kamu ──────────────────────
-  static const _spreadsheetId = 'SPREADSHEET_ID_KAMU';
-
+  static const _spreadsheetId = '1KKQZiVPXr_X9o2XDedcsr8MUQWs1W8LMuGHOYGSP9zY';
   static const _baseUrl =
       'https://sheets.googleapis.com/v4/spreadsheets/$_spreadsheetId';
 
@@ -24,7 +23,7 @@ class SheetsService {
     if (resp.statusCode == 200) {
       return jsonDecode(resp.body) as Map<String, dynamic>;
     }
-    throw Exception('Sheets GET error: ${resp.statusCode} ${resp.body}');
+    throw Exception('Sheets GET error [${resp.statusCode}]: ${resp.body}');
   }
 
   // ── APPEND row ke sheet ──────────────────────────────────────────
@@ -37,13 +36,18 @@ class SheetsService {
       '?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
     );
 
-    await http.post(
+    final resp = await http.post(
       url,
       headers: headers,
       body: jsonEncode({
         'values': [values],
       }),
     );
+
+    // FIX: Tambahkan pengecekan response status agar tau jika append gagal
+    if (resp.statusCode != 200) {
+      throw Exception('Sheets APPEND error [${resp.statusCode}]: ${resp.body}');
+    }
   }
 
   // ── UPDATE satu cell ─────────────────────────────────────────────
@@ -55,7 +59,7 @@ class SheetsService {
       '$_baseUrl/values/$range?valueInputOption=RAW',
     );
 
-    await http.put(
+    final resp = await http.put(
       url,
       headers: headers,
       body: jsonEncode({
@@ -63,37 +67,46 @@ class SheetsService {
         'values': [values],
       }),
     );
+
+    if (resp.statusCode != 200) {
+      throw Exception('Sheets UPDATE error [${resp.statusCode}]: ${resp.body}');
+    }
   }
 
   // ════════════════════════════════════════════════════════════════
   //  USERS
   // ════════════════════════════════════════════════════════════════
 
-  // ── Cek apakah uid sudah ada di sheet Users ──────────────────────
   Future<bool> isUserRegistered(String uid) async {
     try {
       final data = await _get('Users!A:A');
       final rows = (data['values'] as List?)?.cast<List>() ?? [];
       return rows.any((row) => row.isNotEmpty && row[0] == uid);
-    } catch (_) {
+    } catch (e) {
+      // FIX: Log error ke console agar bisa dilacak masalahnya
+      debugPrint('Error pada isUserRegistered: $e');
       return false;
     }
   }
 
-  // ── Daftarkan user baru ke sheet Users ───────────────────────────
   Future<void> registerUser({
     required String uid,
     required String nama,
     required String email,
   }) async {
-    await _append('Users!A:D', [
-      uid,
-      nama,
-      email,
-      DateTime.now().toIso8601String(),
-    ]);
+    try {
+      await _append('Users!A:D', [
+        uid,
+        nama,
+        email,
+        DateTime.now().toIso8601String(),
+      ]);
+      debugPrint('User berhasil didaftarkan ke Sheets!');
+    } catch (e) {
+      debugPrint('Gagal registrasi user ke Sheets: $e');
+      rethrow; // Lepaskan error agar UI bisa menampilkan pesan error
+    }
   }
-
   // ════════════════════════════════════════════════════════════════
   //  PENDAPATAN
   // ════════════════════════════════════════════════════════════════

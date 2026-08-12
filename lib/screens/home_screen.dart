@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/kasir_provider.dart';
 import 'kasir_screen.dart';
@@ -23,67 +24,99 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final p = context.watch<KasirProvider>();
 
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
       backgroundColor: const Color(0xfff5f7fb),
+      resizeToAvoidBottomInset: true,
 
       // ── AppBar ───────────────────────────────────────────────────
       appBar: AppBar(
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: Row(
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.storefront_rounded, size: 22),
-            const SizedBox(width: 8),
-            const Text(
+            Icon(Icons.storefront_rounded, size: 22),
+            SizedBox(width: 8),
+            Text(
               'KasirKu',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),
         actions: [
-          // Pendapatan hari ini
+          // Pendapatan hari ini — chip kompak agar tidak overflow di layar kecil
           if (_currentIndex == 0)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(right: 6),
               child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'Hari ini',
-                      style: TextStyle(fontSize: 10, color: Colors.white70),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width * 0.42,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
                     ),
-                    Text(
-                      p.formatHarga(p.pendapatanHariIni),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .18),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  ],
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Hari ini',
+                          style: TextStyle(fontSize: 9, color: Colors.white70),
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            p.formatHarga(p.pendapatanHariIni),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
 
           // Avatar user
           Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () => _showUserMenu(context, p),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.white24,
-                child: Text(
-                  p.userName.isNotEmpty
-                      ? p.userName[0].toUpperCase()
-                      : 'U',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+            padding: const EdgeInsets.only(right: 8),
+            child: Center(
+              child: GestureDetector(
+                onTap: () => _showUserMenu(context, p),
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.white24,
+                  child: Text(
+                    p.userName.isNotEmpty
+                        ? p.userName[0].toUpperCase()
+                        : 'U',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
@@ -93,26 +126,36 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       // ── Body ─────────────────────────────────────────────────────
-      body: _pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ),
 
       // ── Bottom Nav ───────────────────────────────────────────────
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (i) => setState(() => _currentIndex = i),
-        backgroundColor: Colors.white,
-        indicatorColor: Colors.green.shade50,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.calculate_outlined),
-            selectedIcon: Icon(Icons.calculate, color: Colors.green),
-            label: 'Kasir',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2, color: Colors.green),
-            label: 'Stok',
-          ),
-        ],
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: NavigationBar(
+          height: 64,
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (i) => setState(() => _currentIndex = i),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          indicatorColor: Colors.green.shade50,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.calculate_outlined),
+              selectedIcon: Icon(Icons.calculate, color: Colors.green),
+              label: 'Kasir',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.inventory_2_outlined),
+              selectedIcon: Icon(Icons.inventory_2, color: Colors.green),
+              label: 'Stok',
+            ),
+          ],
+        ),
+      ),
       ),
     );
   }
@@ -121,14 +164,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showUserMenu(BuildContext context, KasirProvider p) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             // Handle
             Container(
               width: 40, height: 4,
@@ -268,6 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 8),
           ],
+        ),
         ),
       ),
     );

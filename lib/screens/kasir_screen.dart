@@ -61,12 +61,15 @@ class _KasirScreenState extends State<KasirScreen> {
     final double bayar     = double.tryParse(_bayarCtrl.text) ?? 0;
     final double kembalian = bayar - p.total;
     final int    cartCount = p.cart.length;
+    // Ruang untuk keranjang collapsed (~8% body) + margin
+    final double cartPeek  = (MediaQuery.sizeOf(context).height * 0.08)
+        .clamp(56.0, 88.0);
 
     return Stack(
       children: [
         // ── Daftar Barang ────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+          padding: EdgeInsets.fromLTRB(12, 12, 12, cartPeek + 12),
           child: Column(
             children: [
               // Search
@@ -508,6 +511,7 @@ class _CartSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<KasirProvider>();
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Container(
       decoration: const BoxDecoration(
@@ -592,7 +596,7 @@ class _CartSheet extends StatelessWidget {
           Expanded(
             child: ListView(
               controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
+              padding: EdgeInsets.fromLTRB(14, 8, 14, 20 + keyboardInset),
               children: [
                 // List item cart
                 if (p.cart.isEmpty)
