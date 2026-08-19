@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.kasir"
-        minSdk = 21  // ← ubah dari flutter.minSdkVersion ke 21
+        minSdk = flutter.minSdkVersion  // ← ubah dari flutter.minSdkVersion ke 21
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
