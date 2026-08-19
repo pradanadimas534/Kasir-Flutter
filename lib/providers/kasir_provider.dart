@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/item_model.dart';
 import '../services/auth_service.dart';
 import '../services/xml_service.dart';
-import '../services/sheets_service.dart';
+import '../services/firestore_service.dart';
 import '../services/drive_service.dart';
 
 class CartItem {
@@ -28,10 +28,10 @@ class CartItem {
 }
 
 class KasirProvider extends ChangeNotifier {
-  final _auth   = AuthService();
-  final _xml    = XmlService();
-  final _sheets = SheetsService();
-  final _drive  = DriveService();
+  final _auth      = AuthService();
+  final _xml       = XmlService();
+  final _firestore = FirestoreService();
+  final _drive     = DriveService();
 
   // ── STATE ────────────────────────────────────────────────────────
   List<ItemModel> items    = [];
@@ -43,6 +43,8 @@ class KasirProvider extends ChangeNotifier {
 
   double pendapatanHariIni = 0;
   int    transaksiHariIni  = 0;
+
+  StreamSubscription? _authSub;
 
   // ── FORMAT ───────────────────────────────────────────────────────
   final _rupiah = NumberFormat.currency(
@@ -90,34 +92,33 @@ class KasirProvider extends ChangeNotifier {
   String get userPhoto => _auth.userPhoto;
 
   // ════════════════════════════════════════════════════════════════
-  //  INIT
+  //  INIT — dengarkan perubahan status login Firebase
   // ════════════════════════════════════════════════════════════════
   Future<void> init() async {
     isLoading = true;
     notifyListeners();
 
-    // Coba login diam-diam (pakai akun yang sudah pernah login)
-    final ok = await _auth.signIn();
-
-    if (ok) {
-      await _onLogin();
-    } else {
-      isLoading = false;
-      notifyListeners();
-    }
+    // Dengarkan stream Firebase Auth
+    _authSub = _auth.userStream.listen((user) async {
+      if (user != null) {
+        isLoggedIn = true;
+        await _onLogin();
+      } else {
+        await _onLogout();
+      }
+    });
   }
 
   // ── Proses setelah login ─────────────────────────────────────────
   Future<void> _onLogin() async {
-    isLoggedIn = true;
-    status     = 'Memuat data...';
+    isLoading = true;
+    status    = 'Memuat data...';
     notifyListeners();
 
-    // ── LANGKAH 1: Daftarkan user ke Sheets jika belum ada ────────
-    // Jalankan di background, tidak perlu tunggu
-    _sheets.isUserRegistered(uid).then((terdaftar) {
-      if (!terdaftar) {
-        _sheets.registerUser(
+    // 1. Daftarkan user ke Firestore (jika belum ada)
+    _firestore.isUserRegistered(uid).then((ada) {
+      if (!ada) {
+        _firestore.registerUser(
           uid:   uid,
           nama:  userName,
           email: userEmail,
@@ -125,62 +126,65 @@ class KasirProvider extends ChangeNotifier {
       }
     });
 
-    // ── LANGKAH 2: Cek XML lokal ──────────────────────────────────
+    // 2. Cek XML lokal
     final adaLokal = await _xml.hasData(uid);
 
     if (adaLokal) {
-      // ✅ Ada data lokal → langsung pakai, tidak perlu cek Drive
-      status = 'Memuat data lokal...';
-      notifyListeners();
+      // Ada data lokal → langsung pakai
       items = await _xml.readAll(uid);
+      status = '';
     } else {
-      // ❌ Tidak ada lokal → pertama kali login di HP ini
-      // Coba download dari Drive (kalau pernah backup sebelumnya)
-      status = 'HP baru terdeteksi, mencari backup...';
+      // Tidak ada lokal → coba restore dari Drive
+      status = 'Mencari backup...';
       notifyListeners();
 
-      bool restored = false;
       try {
         final adaDrive = await _drive.hasCloudData(uid);
         if (adaDrive) {
-          status = 'Memulihkan data dari backup...';
+          status = 'Memulihkan data...';
           notifyListeners();
           final ok = await _drive.downloadXml(uid);
           if (ok) {
-            items    = await _xml.readAll(uid);
-            restored = true;
-            status   = 'Data berhasil dipulihkan ✓';
+            items  = await _xml.readAll(uid);
+            status = 'Data dipulihkan ✓';
           }
+        } else {
+          items  = [];
+          status = '';
         }
       } catch (_) {
-        // Tidak ada internet / Drive error → mulai kosong
-      }
-
-      if (!restored) {
-        // Benar-benar baru, mulai dari kosong
         items  = [];
         status = '';
       }
     }
 
-    // ── LANGKAH 3: Load pendapatan hari ini (background) ──────────
+    // 3. Load pendapatan hari ini
     _loadPendapatan();
 
     isLoading = false;
     notifyListeners();
   }
 
+  // ── Proses setelah logout ────────────────────────────────────────
+  Future<void> _onLogout() async {
+    items             = [];
+    cart              = [];
+    isLoggedIn        = false;
+    pendapatanHariIni = 0;
+    transaksiHariIni  = 0;
+    status            = '';
+    isLoading         = false;
+    notifyListeners();
+  }
+
   // ── Load pendapatan hari ini ─────────────────────────────────────
   Future<void> _loadPendapatan() async {
     try {
-      final data = await _sheets.getPendapatanHariIni(uid);
+      final data = await _firestore.getPendapatanHariIni(uid);
       pendapatanHariIni = data['total']     as double;
       transaksiHariIni  = data['transaksi'] as int;
       notifyListeners();
-    } catch (_) {
-      pendapatanHariIni = 0;
-      transaksiHariIni  = 0;
-    }
+    } catch (_) {}
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -191,29 +195,21 @@ class KasirProvider extends ChangeNotifier {
     notifyListeners();
 
     final ok = await _auth.signIn();
-    if (ok) {
-      await _onLogin();
-      return true;
-    }
 
-    isLoading = false;
-    notifyListeners();
-    return false;
+    if (!ok) {
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+    // _onLogin dipanggil otomatis dari _authSub
+    return true;
   }
 
   Future<void> logout() async {
-    // Upload XML ke Drive sebelum logout (background)
+    // Backup dulu sebelum logout
     try { _drive.uploadXml(uid); } catch (_) {}
-
     await _auth.signOut();
-
-    items             = [];
-    cart              = [];
-    isLoggedIn        = false;
-    pendapatanHariIni = 0;
-    transaksiHariIni  = 0;
-    status            = '';
-    notifyListeners();
+    // _onLogout dipanggil otomatis dari _authSub
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -281,7 +277,6 @@ class KasirProvider extends ChangeNotifier {
   Future<void> prosesBayar(double bayar) async {
     if (cart.isEmpty || bayar < total) return;
 
-    // Update sold di memori
     for (final c in cart) {
       final idx = items.indexWhere((i) => i.id == c.id);
       if (idx != -1) items[idx].sold += c.qty;
@@ -290,15 +285,15 @@ class KasirProvider extends ChangeNotifier {
     final totalBayar = total;
     cart.clear();
 
-    // 1. Simpan ke XML lokal dulu (pasti berhasil)
+    // 1. Simpan ke XML lokal
     await _xml.writeAll(uid, items);
 
-    // 2. Kirim pendapatan ke Sheets (background, tidak block UI)
-    _sheets.tambahPendapatan(uid: uid, total: totalBayar)
+    // 2. Kirim ke Firestore (background)
+    _firestore.tambahPendapatan(uid: uid, total: totalBayar)
         .then((_) => _loadPendapatan())
         .catchError((_) {});
 
-    // 3. Upload XML ke Drive (background)
+    // 3. Backup ke Drive (background)
     _drive.uploadXml(uid).catchError((_) {});
 
     notifyListeners();
@@ -327,12 +322,8 @@ class KasirProvider extends ChangeNotifier {
       stock: stock, sold: 0, type: type, unit: unit,
     );
 
-    // Simpan ke lokal
     items = await _xml.addItem(uid, newItem);
-
-    // Backup ke Drive di background
     _drive.uploadXml(uid).catchError((_) {});
-
     notifyListeners();
   }
 
@@ -372,6 +363,7 @@ class KasirProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     super.dispose();
   }
 }

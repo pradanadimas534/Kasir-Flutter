@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "19959687372",
+    "project_id": "ertyu-yhd0298",
+    "storage_bucket": "ertyu-yhd0298.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:19959687372:android:948719cd3b0d000a323a69",
+        "android_client_info": {
+          "package_name": "com.example.kasir"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "19959687372-ssoq87ktac1ngl3kc5bbgl2iei2douta.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDUAVwTxagz7d1ulbjI20WS-N5PU_jKmMo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "19959687372-ssoq87ktac1ngl3kc5bbgl2iei2douta.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

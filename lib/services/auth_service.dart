@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
@@ -6,35 +6,47 @@ class AuthService {
   factory AuthService() => _i;
   AuthService._();
 
-  final _googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-      'profile',
-      'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/drive.file',
-    ],
-  );
+  final _auth         = FirebaseAuth.instance;
+  final _googleSignIn = GoogleSignIn();
 
-  GoogleSignInAccount? _account;
+  // ── Stream perubahan status login ────────────────────────────────
+  Stream<User?> get userStream => _auth.authStateChanges();
 
-  bool   get isSignedIn => _account != null;
-  String get uid        => _account?.id        ?? '';
-  String get userName   => _account?.displayName ?? '';
-  String get userEmail  => _account?.email      ?? '';
-  String get userPhoto  => _account?.photoUrl   ?? '';
+  User?   get currentUser => _auth.currentUser;
+  String  get uid         => _auth.currentUser?.uid        ?? '';
+  String  get userName    => _auth.currentUser?.displayName ?? '';
+  String  get userEmail   => _auth.currentUser?.email       ?? '';
+  String  get userPhoto   => _auth.currentUser?.photoURL    ?? '';
+  bool    get isLoggedIn  => _auth.currentUser != null;
 
-  // ── Login ────────────────────────────────────────────────────────
+  // ── Login Google ─────────────────────────────────────────────────
   Future<bool> signIn() async {
     try {
-      // Coba restore sesi login sebelumnya
-      _account = await _googleSignIn.signInSilently();
+      // Coba silent login dulu
+      final silentUser = await _googleSignIn.signInSilently();
+      if (silentUser != null) {
+        final googleAuth = await silentUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken:     googleAuth.idToken,
+        );
+        await _auth.signInWithCredential(credential);
+        return true;
+      }
 
-      // Jika tidak ada sesi tersimpan, munculkan dialog pilihkun
-      _account ??= await _googleSignIn.signIn();
+      // Tampilkan popup login
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return false;
 
-      return _account != null;
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken:     googleAuth.idToken,
+      );
+
+      await _auth.signInWithCredential(credential);
+      return true;
     } catch (e) {
-      debugPrint('Error pada Google SignIn: $e');
       return false;
     }
   }
@@ -42,29 +54,13 @@ class AuthService {
   // ── Logout ───────────────────────────────────────────────────────
   Future<void> signOut() async {
     await _googleSignIn.signOut();
-    _account = null;
+    await _auth.signOut();
   }
 
-  // ── Ambil auth headers (Auto Restore & Refresh Token) ────────────
+  // ── Auth headers untuk Google Drive API ─────────────────────────
   Future<Map<String, String>> getAuthHeaders() async {
-    // 1. Jika app baru dibuka & _account null, coba restore akun dulu
-    if (_account == null) {
-      _account = await _googleSignIn.signInSilently();
-    }
-
-    // 2. Jika masih null, artinya user memang harus login ulang
-    if (_account == null) {
-      throw Exception('User belum login. Silakan login terlebih dahulu.');
-    }
-
-    // 3. Ambil header terbaru (termasuk Authorization Bearer Token)
-    final headers = await _account!.authHeaders;
-    
-    // Periksa apakah token berhasil didapat
-    if (!headers.containsKey('Authorization')) {
-      throw Exception('Gagal mendapatkan token OAuth dari Google.');
-    }
-
-    return headers;
+    final googleUser = await _googleSignIn.signInSilently();
+    if (googleUser == null) throw Exception('Belum login');
+    return await googleUser.authHeaders;
   }
 }
