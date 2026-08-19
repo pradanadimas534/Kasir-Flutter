@@ -182,7 +182,7 @@ class _StokScreenState extends State<StokScreen> {
                       if (_newType == 'timbang')
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _newUnit,
+                            initialValue: _newUnit,
                             decoration: InputDecoration(
                               labelText: 'Satuan',
                               filled: true,
@@ -259,20 +259,19 @@ class _StokScreenState extends State<StokScreen> {
                               ? 'pcs'
                               : _newUnit,
                         );
+                        if (!context.mounted) return;
 
                         _nameCtrl.clear();
                         _priceCtrl.clear();
                         _stockCtrl.clear();
                         setState(() => _showForm = false);
 
-                        if (mounted) {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(SnackBar(
-                            content:
-                                Text('$name berhasil ditambahkan'),
-                            backgroundColor: Colors.green,
-                          ));
-                        }
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(
+                          content:
+                              Text('$name berhasil ditambahkan'),
+                          backgroundColor: Colors.green,
+                        ));
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.green,
@@ -316,6 +315,7 @@ class _StokScreenState extends State<StokScreen> {
                       item.price;
                   await p.ubahStok(item.id, newStock);
                   await p.ubahHarga(item.id, newPrice);
+                  if (!context.mounted) return;
                   setState(() => _editId = null);
                 },
                 onCancelEdit: () =>

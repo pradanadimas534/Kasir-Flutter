@@ -151,6 +151,7 @@ class _KasirScreenState extends State<KasirScreen> {
             onChanged:        () => setState(() {}),
             onBayar: () async {
               await p.prosesBayar(bayar);
+              if (!context.mounted) return;
               _bayarCtrl.clear();
               _sheetCtrl.animateTo(
                 0.08,
@@ -159,16 +160,14 @@ class _KasirScreenState extends State<KasirScreen> {
               );
               setState(() => _cartOpen = false);
 
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Transaksi berhasil! Kembalian ${p.formatHarga(kembalian)}',
-                    ),
-                    backgroundColor: Colors.green,
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Transaksi berhasil! Kembalian ${p.formatHarga(kembalian)}',
                   ),
-                );
-              }
+                  backgroundColor: Colors.green,
+                ),
+              );
             },
           ),
         ),

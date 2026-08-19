@@ -57,10 +57,4 @@ class AuthService {
     await _auth.signOut();
   }
 
-  // ── Auth headers untuk Google Drive API ─────────────────────────
-  Future<Map<String, String>> getAuthHeaders() async {
-    final googleUser = await _googleSignIn.signInSilently();
-    if (googleUser == null) throw Exception('Belum login');
-    return await googleUser.authHeaders;
-  }
 }

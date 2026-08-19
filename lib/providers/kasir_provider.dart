@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/item_model.dart';
 import '../services/auth_service.dart';
-import '../services/xml_service.dart';
 import '../services/firestore_service.dart';
-import '../services/drive_service.dart';
 
 class CartItem {
   final int    id;
@@ -29,9 +27,7 @@ class CartItem {
 
 class KasirProvider extends ChangeNotifier {
   final _auth      = AuthService();
-  final _xml       = XmlService();
   final _firestore = FirestoreService();
-  final _drive     = DriveService();
 
   // ── STATE ────────────────────────────────────────────────────────
   List<ItemModel> items    = [];
@@ -126,36 +122,13 @@ class KasirProvider extends ChangeNotifier {
       }
     });
 
-    // 2. Cek XML lokal
-    final adaLokal = await _xml.hasData(uid);
-
-    if (adaLokal) {
-      // Ada data lokal → langsung pakai
-      items = await _xml.readAll(uid);
+    // 2. Muat barang langsung dari Firestore
+    try {
+      items = await _firestore.getItems(uid);
       status = '';
-    } else {
-      // Tidak ada lokal → coba restore dari Drive
-      status = 'Mencari backup...';
-      notifyListeners();
-
-      try {
-        final adaDrive = await _drive.hasCloudData(uid);
-        if (adaDrive) {
-          status = 'Memulihkan data...';
-          notifyListeners();
-          final ok = await _drive.downloadXml(uid);
-          if (ok) {
-            items  = await _xml.readAll(uid);
-            status = 'Data dipulihkan ✓';
-          }
-        } else {
-          items  = [];
-          status = '';
-        }
-      } catch (_) {
-        items  = [];
-        status = '';
-      }
+    } catch (_) {
+      items = [];
+      status = 'Gagal memuat data barang';
     }
 
     // 3. Load pendapatan hari ini
@@ -206,8 +179,6 @@ class KasirProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    // Backup dulu sebelum logout
-    try { _drive.uploadXml(uid); } catch (_) {}
     await _auth.signOut();
     // _onLogout dipanggil otomatis dari _authSub
   }
@@ -283,18 +254,15 @@ class KasirProvider extends ChangeNotifier {
     }
 
     final totalBayar = total;
-    cart.clear();
 
-    // 1. Simpan ke XML lokal
-    await _xml.writeAll(uid, items);
+    // 1. Simpan perubahan barang ke Firestore
+    await Future.wait(items.map((item) => _firestore.updateItem(uid, item)));
+    cart.clear();
 
     // 2. Kirim ke Firestore (background)
     _firestore.tambahPendapatan(uid: uid, total: totalBayar)
         .then((_) => _loadPendapatan())
         .catchError((_) {});
-
-    // 3. Backup ke Drive (background)
-    _drive.uploadXml(uid).catchError((_) {});
 
     notifyListeners();
   }
@@ -322,15 +290,14 @@ class KasirProvider extends ChangeNotifier {
       stock: stock, sold: 0, type: type, unit: unit,
     );
 
-    items = await _xml.addItem(uid, newItem);
-    _drive.uploadXml(uid).catchError((_) {});
+    items = await _firestore.addItem(uid, newItem);
     notifyListeners();
   }
 
   Future<void> hapusItem(int id) async {
     cart.removeWhere((c) => c.id == id);
-    items = await _xml.deleteItem(uid, id);
-    _drive.uploadXml(uid).catchError((_) {});
+    await _firestore.deleteItem(uid, id);
+    items = await _firestore.getItems(uid);
     notifyListeners();
   }
 
@@ -338,7 +305,7 @@ class KasirProvider extends ChangeNotifier {
     final idx = items.indexWhere((i) => i.id == id);
     if (idx == -1) return;
     items[idx].stock = value < 0 ? 0 : value;
-    await _xml.writeAll(uid, items);
+    await _firestore.updateItem(uid, items[idx]);
     notifyListeners();
   }
 
@@ -346,7 +313,7 @@ class KasirProvider extends ChangeNotifier {
     final idx = items.indexWhere((i) => i.id == id);
     if (idx == -1) return;
     items[idx].price = value < 0 ? 0 : value;
-    await _xml.writeAll(uid, items);
+    await _firestore.updateItem(uid, items[idx]);
     notifyListeners();
   }
 

@@ -142,22 +142,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     _infoRow(
                       Icons.storage_rounded,
-                      'Data barang tersimpan di HP',
-                    ),
-                    const SizedBox(height: 8),
-                    _infoRow(
-                      Icons.cloud_upload_rounded,
-                      'Backup otomatis ke Google Drive',
+                      'Data barang tersimpan di Firebase',
                     ),
                     const SizedBox(height: 8),
                     _infoRow(
                       Icons.restore_rounded,
-                      'Pindah HP? Data langsung pulih',
-                    ),
-                    const SizedBox(height: 8),
-                    _infoRow(
-                      Icons.table_chart_rounded,
-                      'Pendapatan tercatat di Google Sheets',
+                      'Data otomatis tersinkron di semua perangkat',
                     ),
                   ],
                 ),
