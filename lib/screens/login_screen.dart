@@ -17,11 +17,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final ok = await context.read<KasirProvider>().login();
 
-    if (!ok && mounted) {
+    if (!mounted) return;
+
+    if (!ok) {
       setState(() => _loading = false);
+      final detail = context.read<KasirProvider>().loginError;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login gagal, coba lagi'),
+        SnackBar(
+          content: Text(
+            detail.isEmpty ? 'Login gagal, coba lagi' : detail,
+          ),
           backgroundColor: Colors.red,
         ),
       );

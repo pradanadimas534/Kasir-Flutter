@@ -36,6 +36,7 @@ class KasirProvider extends ChangeNotifier {
   bool   isLoading  = true;
   bool   isLoggedIn = false;
   String status     = '';
+  String loginError = '';
 
   double pendapatanHariIni = 0;
   int    transaksiHariIni  = 0;
@@ -94,7 +95,9 @@ class KasirProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    // Dengarkan stream Firebase Auth
+    // Firebase adalah sumber status sesi. Gerbang UI juga mendengarkan stream
+    // yang sama, sehingga perpindahan ke beranda tidak bergantung pada proses
+    // Firestore di bawah ini.
     _authSub = _auth.userStream.listen((user) async {
       if (user != null) {
         isLoggedIn = true;
@@ -165,11 +168,13 @@ class KasirProvider extends ChangeNotifier {
   // ════════════════════════════════════════════════════════════════
   Future<bool> login() async {
     isLoading = true;
+    loginError = '';
     notifyListeners();
 
     final ok = await _auth.signIn();
 
     if (!ok) {
+      loginError = _auth.lastError;
       isLoading = false;
       notifyListeners();
       return false;

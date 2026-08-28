@@ -7,12 +7,20 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:19959687372:android:948719cd3b0d000a323a69",
+        "mobilesdk_app_id": "1:19959687372:android:125fbdfa06b76045323a69",
         "android_client_info": {
           "package_name": "com.example.kasir"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "19959687372-7mobcijds5285ltebe4227huk2ogqqf3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.kasir",
+            "certificate_hash": "94930444b93208a60d11856ac33190f76fef207b"
+          }
+        },
         {
           "client_id": "19959687372-ssoq87ktac1ngl3kc5bbgl2iei2douta.apps.googleusercontent.com",
           "client_type": 3
@@ -29,6 +37,13 @@
             {
               "client_id": "19959687372-ssoq87ktac1ngl3kc5bbgl2iei2douta.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "19959687372-a3jkdmvr2k74hm8i6m7pv96pk07bp64k.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.kasirku"
+              }
             }
           ]
         }

@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'providers/kasir_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,31 +46,35 @@ class _AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<KasirProvider>();
+    // Gunakan status Firebase sebagai sumber utama navigasi. Nilai
+    // `isLoggedIn` di provider hanya cache dan bisa terlambat diperbarui
+    // saat event login Google dan event awal Firebase datang berdekatan.
+    return StreamBuilder(
+      stream: AuthService().userStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const _LoadingScreen();
+        }
 
-    if (p.isLoading) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: Colors.green),
-              const SizedBox(height: 14),
-              Text(
-                p.status.isNotEmpty ? p.status : 'Memuat...',
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+        // Begitu Firebase mengonfirmasi user, jangan menunggu Firestore selesai
+        // dimuat. Beranda dapat tampil sementara provider memuat datanya.
+        if (snapshot.hasData) return const HomeScreen();
 
-    if (!p.isLoggedIn) return const LoginScreen();
+        return const LoginScreen();
+      },
+    );
+  }
+}
 
-    return const HomeScreen();
+class _LoadingScreen extends StatelessWidget {
+  const _LoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(color: Colors.green),
+      ),
+    );
   }
 }
