@@ -15,11 +15,14 @@ class FirestoreService {
       _users.doc(uid).collection('items');
 
   Future<List<ItemModel>> getItems(String uid) async {
-    final snapshot = await _items(uid).orderBy('id').get();
-    return snapshot.docs.map((doc) {
+    // Urutkan di aplikasi agar tidak bergantung pada query orderBy Firestore.
+    // Ini juga tetap dapat membaca data barang lama yang mungkin belum memiliki
+    // field `id` lengkap.
+    final snapshot = await _items(uid).get();
+    final items = snapshot.docs.map((doc) {
       final data = doc.data();
       return ItemModel(
-        id: data['id'] as int,
+        id: (data['id'] as num?)?.toInt() ?? int.tryParse(doc.id) ?? 0,
         name: data['name'] as String? ?? '',
         price: (data['price'] as num?)?.toDouble() ?? 0,
         stock: (data['stock'] as num?)?.toDouble() ?? 0,
@@ -28,16 +31,19 @@ class FirestoreService {
         unit: data['unit'] as String? ?? 'pcs',
       );
     }).toList();
+    items.sort((a, b) => a.id.compareTo(b.id));
+    return items;
   }
 
   Future<List<ItemModel>> addItem(String uid, ItemModel item) async {
-    final snapshot = await _items(uid)
-        .orderBy('id', descending: true)
-        .limit(1)
-        .get();
-    final nextId = snapshot.docs.isEmpty
+    // Mengambil daftar biasa lalu menentukan ID terbesar secara lokal.
+    // Sebelumnya query orderBy di sini dapat gagal sebelum proses simpan.
+    final existingItems = await getItems(uid);
+    final nextId = existingItems.isEmpty
         ? 1
-        : (snapshot.docs.first.data()['id'] as int) + 1;
+        : existingItems.map((existing) => existing.id).reduce(
+              (highest, id) => id > highest ? id : highest,
+            ) + 1;
     final newItem = item.copyWith(id: nextId);
     await _items(uid).doc('$nextId').set(_itemData(newItem));
     return getItems(uid);
@@ -140,6 +146,27 @@ class FirestoreService {
       };
     } catch (_) {
       return {'total': 0.0, 'transaksi': 0};
+    }
+  }
+
+  /// Semua rekap harian dipakai untuk membentuk laporan bulanan dan tahunan.
+  /// ID dokumen menggunakan format ISO (YYYY-MM-DD), sehingga tanggal bisa
+  /// diurutkan dan dikelompokkan konsisten di sisi aplikasi.
+  Future<List<Map<String, dynamic>>> getRiwayatPendapatan(String uid) async {
+    try {
+      final snapshot = await _users.doc(uid).collection('pendapatan').get();
+      final result = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'tanggal': data['tanggal'] as String? ?? doc.id,
+          'total': (data['total'] as num?)?.toDouble() ?? 0,
+          'transaksi': (data['transaksi'] as num?)?.toInt() ?? 0,
+        };
+      }).toList();
+      result.sort((a, b) => (a['tanggal'] as String).compareTo(b['tanggal'] as String));
+      return result;
+    } catch (_) {
+      return [];
     }
   }
 }

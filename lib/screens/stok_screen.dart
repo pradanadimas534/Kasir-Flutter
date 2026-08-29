@@ -21,6 +21,7 @@ class _StokScreenState extends State<StokScreen> {
   final _stockCtrl = TextEditingController();
   String _newType  = 'satuan';
   String _newUnit  = 'pcs';
+  bool   _isSaving = false;
 
   // Edit inline
   int?   _editId;
@@ -231,7 +232,9 @@ class _StokScreenState extends State<StokScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: () async {
+                      onPressed: _isSaving
+                          ? null
+                          : () async {
                         final name  = _nameCtrl.text.trim();
                         final price = double.tryParse(
                                 _priceCtrl.text) ??
@@ -250,28 +253,44 @@ class _StokScreenState extends State<StokScreen> {
                           return;
                         }
 
-                        await p.addItem(
-                          name:  name,
-                          price: price,
-                          stock: stock,
-                          type:  _newType,
-                          unit:  _newType == 'satuan'
-                              ? 'pcs'
-                              : _newUnit,
-                        );
-                        if (!context.mounted) return;
+                        setState(() => _isSaving = true);
 
-                        _nameCtrl.clear();
-                        _priceCtrl.clear();
-                        _stockCtrl.clear();
-                        setState(() => _showForm = false);
+                        try {
+                          await p.addItem(
+                            name:  name,
+                            price: price,
+                            stock: stock,
+                            type:  _newType,
+                            unit:  _newType == 'satuan'
+                                ? 'pcs'
+                                : _newUnit,
+                          );
+                          if (!context.mounted) return;
 
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(
-                          content:
-                              Text('$name berhasil ditambahkan'),
-                          backgroundColor: Colors.green,
-                        ));
+                          _nameCtrl.clear();
+                          _priceCtrl.clear();
+                          _stockCtrl.clear();
+                          setState(() {
+                            _isSaving = false;
+                            _showForm = false;
+                          });
+
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(
+                            content:
+                                Text('$name berhasil ditambahkan'),
+                            backgroundColor: Colors.green,
+                          ));
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          setState(() => _isSaving = false);
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(
+                            content: Text(
+                                'Gagal menambahkan barang: $e'),
+                            backgroundColor: Colors.red,
+                          ));
+                        }
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.green,
@@ -281,10 +300,20 @@ class _StokScreenState extends State<StokScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'Simpan Barang',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Simpan Barang',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold),
+                            ),
                     ),
                   ),
                 ],

@@ -40,6 +40,8 @@ class KasirProvider extends ChangeNotifier {
 
   double pendapatanHariIni = 0;
   int    transaksiHariIni  = 0;
+  List<Map<String, dynamic>> riwayatPendapatan = [];
+  bool laporanLoading = false;
 
   StreamSubscription? _authSub;
 
@@ -148,6 +150,8 @@ class KasirProvider extends ChangeNotifier {
     isLoggedIn        = false;
     pendapatanHariIni = 0;
     transaksiHariIni  = 0;
+    riwayatPendapatan = [];
+    laporanLoading = false;
     status            = '';
     isLoading         = false;
     notifyListeners();
@@ -161,6 +165,15 @@ class KasirProvider extends ChangeNotifier {
       transaksiHariIni  = data['transaksi'] as int;
       notifyListeners();
     } catch (_) {}
+  }
+
+  Future<void> loadRiwayatPendapatan({bool force = false}) async {
+    if (laporanLoading || (riwayatPendapatan.isNotEmpty && !force)) return;
+    laporanLoading = true;
+    notifyListeners();
+    riwayatPendapatan = await _firestore.getRiwayatPendapatan(uid);
+    laporanLoading = false;
+    notifyListeners();
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -266,7 +279,10 @@ class KasirProvider extends ChangeNotifier {
 
     // 2. Kirim ke Firestore (background)
     _firestore.tambahPendapatan(uid: uid, total: totalBayar)
-        .then((_) => _loadPendapatan())
+        .then((_) {
+          _loadPendapatan();
+          loadRiwayatPendapatan(force: true);
+        })
         .catchError((_) {});
 
     notifyListeners();
@@ -295,8 +311,15 @@ class KasirProvider extends ChangeNotifier {
       stock: stock, sold: 0, type: type, unit: unit,
     );
 
-    items = await _firestore.addItem(uid, newItem);
-    notifyListeners();
+    try {
+      items = await _firestore.addItem(uid, newItem);
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('Gagal menambah barang: $e\n$st');
+      // Lempar lagi supaya UI (stok_screen.dart) bisa menampilkan
+      // pesan error yang sebenarnya ke pengguna, bukan diam saja.
+      rethrow;
+    }
   }
 
   Future<void> hapusItem(int id) async {
@@ -309,9 +332,18 @@ class KasirProvider extends ChangeNotifier {
   Future<void> ubahStok(int id, double value) async {
     final idx = items.indexWhere((i) => i.id == id);
     if (idx == -1) return;
+    final stokLama = items[idx].stock;
     items[idx].stock = value < 0 ? 0 : value;
-    await _firestore.updateItem(uid, items[idx]);
-    notifyListeners();
+    try {
+      await _firestore.updateItem(uid, items[idx]);
+      notifyListeners();
+    } catch (e) {
+      // Gagal simpan ke server -> kembalikan nilai lokal biar UI tidak
+      // menampilkan stok baru yang sebenarnya belum tersimpan.
+      items[idx].stock = stokLama;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> ubahHarga(int id, double value) async {

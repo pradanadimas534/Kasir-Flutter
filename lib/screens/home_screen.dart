@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/kasir_provider.dart';
 import 'kasir_screen.dart';
 import 'stok_screen.dart';
+import 'laporan_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _pages = const [
     KasirScreen(),
     StokScreen(),
+    LaporanScreen(),
   ];
 
   @override
@@ -152,6 +154,11 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.inventory_2_outlined),
               selectedIcon: Icon(Icons.inventory_2, color: Colors.green),
               label: 'Stok',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.bar_chart_outlined),
+              selectedIcon: Icon(Icons.bar_chart, color: Colors.green),
+              label: 'Laporan',
             ),
           ],
         ),
