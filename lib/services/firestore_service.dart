@@ -29,6 +29,7 @@ class FirestoreService {
         sold: (data['sold'] as num?)?.toDouble() ?? 0,
         type: data['type'] as String? ?? 'satuan',
         unit: data['unit'] as String? ?? 'pcs',
+        barcode: data['barcode'] as String? ?? '',
       );
     }).toList();
     items.sort((a, b) => a.id.compareTo(b.id));
@@ -65,6 +66,7 @@ class FirestoreService {
         'sold': item.sold,
         'type': item.type,
         'unit': item.unit,
+        'barcode': item.barcode,
         'updatedAt': FieldValue.serverTimestamp(),
       };
 

@@ -15,7 +15,9 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>kasirku</string>
+	<string>Kasir</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Kamera digunakan untuk memindai barcode barang saat transaksi.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

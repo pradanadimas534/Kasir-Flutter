@@ -225,6 +225,15 @@ class KasirProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  ItemModel? cariBarangDariBarcode(String barcode) {
+    final kode = barcode.trim();
+    if (kode.isEmpty) return null;
+    for (final item in items) {
+      if (item.barcode.trim() == kode) return item;
+    }
+    return null;
+  }
+
   void kurangiQty(int id) {
     final idx = cart.indexWhere((c) => c.id == id);
     if (idx == -1) return;
@@ -303,12 +312,24 @@ class KasirProvider extends ChangeNotifier {
     required double stock,
     required String type,
     required String unit,
+    String barcode = '',
   }) async {
     if (name.isEmpty || price <= 0) return;
+    final cleanBarcode = barcode.trim();
+    if (cleanBarcode.isNotEmpty &&
+        items.any((item) => item.barcode.trim() == cleanBarcode)) {
+      throw StateError('Barcode sudah dipakai oleh barang lain');
+    }
 
     final newItem = ItemModel(
-      id: 0, name: name, price: price,
-      stock: stock, sold: 0, type: type, unit: unit,
+      id: 0,
+      name: name,
+      price: price,
+      stock: stock,
+      sold: 0,
+      type: type,
+      unit: unit,
+      barcode: cleanBarcode,
     );
 
     try {
@@ -344,6 +365,29 @@ class KasirProvider extends ChangeNotifier {
       notifyListeners();
       rethrow;
     }
+  }
+
+  Future<void> tambahStok(int id, double jumlah) async {
+    if (jumlah <= 0) return;
+    final idx = items.indexWhere((i) => i.id == id);
+    if (idx == -1) return;
+    items[idx].stock += jumlah;
+    await _firestore.updateItem(uid, items[idx]);
+    notifyListeners();
+  }
+
+  Future<void> ubahBarcode(int id, String barcode) async {
+    final idx = items.indexWhere((item) => item.id == id);
+    if (idx == -1) return;
+    final cleanBarcode = barcode.trim();
+    if (cleanBarcode.isNotEmpty &&
+        items.any((item) =>
+            item.id != id && item.barcode.trim() == cleanBarcode)) {
+      throw StateError('Barcode sudah dipakai oleh barang lain');
+    }
+    items[idx] = items[idx].copyWith(barcode: cleanBarcode);
+    await _firestore.updateItem(uid, items[idx]);
+    notifyListeners();
   }
 
   Future<void> ubahHarga(int id, double value) async {

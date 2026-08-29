@@ -50,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(Icons.storefront_rounded, size: 22),
             SizedBox(width: 8),
             Text(
-              'KasirKu',
+              'Kasir',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],

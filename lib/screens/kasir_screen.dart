@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/item_model.dart';
 import '../providers/kasir_provider.dart';
+import 'barcode_scanner_screen.dart';
 
 class KasirScreen extends StatefulWidget {
   const KasirScreen({super.key});
@@ -45,6 +46,41 @@ class _KasirScreenState extends State<KasirScreen> {
     setState(() => _cartOpen = !_cartOpen);
   }
 
+  Future<void> _scanBarcode() async {
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+    if (!mounted || barcode == null) return;
+
+    final p = context.read<KasirProvider>();
+    final item = p.cariBarangDariBarcode(barcode);
+    if (item == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Barcode $barcode belum terdaftar pada barang.'),
+        backgroundColor: Colors.orange,
+      ));
+      return;
+    }
+    if (item.stock <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${item.name} sedang habis.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    if (item.type == 'timbang') {
+      _ItemTile(item: item)._showTimbangDialog(context, p);
+      return;
+    }
+    p.tambahKeCart(item);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('${item.name} ditambahkan dari hasil scan'),
+      duration: const Duration(seconds: 2),
+      backgroundColor: Colors.green,
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<KasirProvider>();
@@ -79,6 +115,11 @@ class _KasirScreenState extends State<KasirScreen> {
                 decoration: InputDecoration(
                   hintText: 'Cari barang...',
                   prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: IconButton(
+                    onPressed: _scanBarcode,
+                    tooltip: 'Scan barcode',
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                  ),
                   filled: true,
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(vertical: 10),

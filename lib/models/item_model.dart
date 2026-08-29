@@ -6,6 +6,7 @@ class ItemModel {
   double sold;
   final String type; // 'satuan' | 'timbang'
   final String unit; // 'pcs' | 'gram' | 'ons' | 'kg'
+  final String barcode;
 
   ItemModel({
     required this.id,
@@ -15,6 +16,7 @@ class ItemModel {
     required this.sold,
     required this.type,
     required this.unit,
+    this.barcode = '',
   });
 
   ItemModel copyWith({
@@ -25,6 +27,7 @@ class ItemModel {
     double? sold,
     String? type,
     String? unit,
+    String? barcode,
   }) =>
       ItemModel(
         id:    id    ?? this.id,
@@ -34,6 +37,7 @@ class ItemModel {
         sold:  sold  ?? this.sold,
         type:  type  ?? this.type,
         unit:  unit  ?? this.unit,
+        barcode: barcode ?? this.barcode,
       );
 
   // ── XML ──────────────────────────────────────────────────────────
@@ -45,6 +49,7 @@ class ItemModel {
     'sold':  sold.toString(),
     'type':  type,
     'unit':  unit,
+    'barcode': barcode,
   };
 
   factory ItemModel.fromXmlMap(Map<String, String> m) => ItemModel(
@@ -55,5 +60,6 @@ class ItemModel {
     sold:  double.parse(m['sold']  ?? '0'),
     type:  m['type']  ?? 'satuan',
     unit:  m['unit']  ?? 'pcs',
+    barcode: m['barcode'] ?? '',
   );
 }

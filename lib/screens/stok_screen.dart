@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/item_model.dart';
 import '../providers/kasir_provider.dart';
+import 'barcode_scanner_screen.dart';
 
 class StokScreen extends StatefulWidget {
   const StokScreen({super.key});
@@ -19,6 +20,7 @@ class _StokScreenState extends State<StokScreen> {
   final _nameCtrl  = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _stockCtrl = TextEditingController();
+  final _barcodeCtrl = TextEditingController();
   String _newType  = 'satuan';
   String _newUnit  = 'pcs';
   bool   _isSaving = false;
@@ -27,6 +29,7 @@ class _StokScreenState extends State<StokScreen> {
   int?   _editId;
   final _editStockCtrl = TextEditingController();
   final _editPriceCtrl = TextEditingController();
+  final _editBarcodeCtrl = TextEditingController();
 
   @override
   void dispose() {
@@ -34,8 +37,10 @@ class _StokScreenState extends State<StokScreen> {
     _nameCtrl.dispose();
     _priceCtrl.dispose();
     _stockCtrl.dispose();
+    _barcodeCtrl.dispose();
     _editStockCtrl.dispose();
     _editPriceCtrl.dispose();
+    _editBarcodeCtrl.dispose();
     super.dispose();
   }
 
@@ -164,6 +169,27 @@ class _StokScreenState extends State<StokScreen> {
 
                   Row(
                     children: [
+                      Expanded(
+                        child: _formField(
+                          ctrl: _barcodeCtrl,
+                          label: 'Barcode (opsional)',
+                          hint: 'Scan/tulis kode pada kemasan',
+                          inputType: TextInputType.text,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        onPressed: () => _scanBarcodeUntuk(_barcodeCtrl),
+                        tooltip: 'Scan barcode',
+                        icon: const Icon(Icons.qr_code_scanner_rounded),
+                        color: Colors.green,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  Row(
+                    children: [
                       // Input harga
                       Expanded(
                         child: _formField(
@@ -264,12 +290,14 @@ class _StokScreenState extends State<StokScreen> {
                             unit:  _newType == 'satuan'
                                 ? 'pcs'
                                 : _newUnit,
+                            barcode: _barcodeCtrl.text,
                           );
                           if (!context.mounted) return;
 
                           _nameCtrl.clear();
                           _priceCtrl.clear();
                           _stockCtrl.clear();
+                          _barcodeCtrl.clear();
                           setState(() {
                             _isSaving = false;
                             _showForm = false;
@@ -333,6 +361,7 @@ class _StokScreenState extends State<StokScreen> {
                         item.stock.toString();
                     _editPriceCtrl.text =
                         item.price.toInt().toString();
+                    _editBarcodeCtrl.text = item.barcode;
                   });
                 },
                 onSaveEdit: () async {
@@ -344,9 +373,13 @@ class _StokScreenState extends State<StokScreen> {
                       item.price;
                   await p.ubahStok(item.id, newStock);
                   await p.ubahHarga(item.id, newPrice);
+                  await p.ubahBarcode(item.id, _editBarcodeCtrl.text);
                   if (!context.mounted) return;
                   setState(() => _editId = null);
                 },
+                onAddStock: () => _showTambahStokDialog(item),
+                editBarcodeCtrl: _editBarcodeCtrl,
+                onScanBarcode: () => _scanBarcodeUntuk(_editBarcodeCtrl),
                 onCancelEdit: () =>
                     setState(() => _editId = null),
                 onDelete: () async {
@@ -378,6 +411,66 @@ class _StokScreenState extends State<StokScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showTambahStokDialog(ItemModel item) async {
+    final ctrl = TextEditingController();
+    final jumlah = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Tambah stok ${item.name}'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+          ],
+          decoration: InputDecoration(
+            labelText: 'Jumlah (${item.unit})',
+            hintText: 'Contoh: ${item.type == 'timbang' ? '0.5' : '10'}',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              ctx,
+              double.tryParse(ctrl.text.trim()),
+            ),
+            child: const Text('Tambah'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (jumlah == null || jumlah <= 0 || !mounted) return;
+
+    try {
+      await context.read<KasirProvider>().tambahStok(item.id, jumlah);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${context.read<KasirProvider>().formatQty(jumlah)} ${item.unit} ditambahkan ke ${item.name}'),
+        backgroundColor: Colors.green,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Gagal menambah stok: $e'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
+
+  Future<void> _scanBarcodeUntuk(TextEditingController controller) async {
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+    if (!mounted || barcode == null) return;
+    setState(() => controller.text = barcode);
   }
 
   Widget _typeChip(String value, String label) {
@@ -440,7 +533,10 @@ class _ItemCard extends StatelessWidget {
   final int?                   editId;
   final TextEditingController  editStockCtrl;
   final TextEditingController  editPriceCtrl;
+  final TextEditingController editBarcodeCtrl;
   final VoidCallback           onStartEdit;
+  final VoidCallback           onAddStock;
+  final VoidCallback onScanBarcode;
   final VoidCallback           onSaveEdit;
   final VoidCallback           onCancelEdit;
   final VoidCallback           onDelete;
@@ -450,7 +546,10 @@ class _ItemCard extends StatelessWidget {
     required this.editId,
     required this.editStockCtrl,
     required this.editPriceCtrl,
+    required this.editBarcodeCtrl,
     required this.onStartEdit,
+    required this.onAddStock,
+    required this.onScanBarcode,
     required this.onSaveEdit,
     required this.onCancelEdit,
     required this.onDelete,
@@ -537,6 +636,15 @@ class _ItemCard extends StatelessWidget {
               // Aksi
               if (!editing) ...[
                 IconButton(
+                  onPressed: onAddStock,
+                  icon: const Icon(Icons.add_box_outlined, size: 19),
+                  tooltip: 'Tambah stok',
+                  color: Colors.green,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(32, 32),
+                  ),
+                ),
+                IconButton(
                   onPressed: onStartEdit,
                   icon: const Icon(
                       Icons.edit_outlined, size: 18),
@@ -596,55 +704,71 @@ class _ItemCard extends StatelessWidget {
               ],
             )
           else
-            Row(
+            Column(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: editStockCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(
-                            decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                          RegExp(r'[0-9.]')),
-                    ],
-                    decoration: InputDecoration(
-                      labelText:
-                          'Stok (${item.unit})',
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding:
-                          const EdgeInsets.symmetric(
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: editStockCtrl,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                        ],
+                        decoration: InputDecoration(
+                          labelText: 'Stok (${item.unit})',
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 8),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: editPriceCtrl,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: InputDecoration(
+                          labelText: 'Harga (Rp)',
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: editPriceCtrl,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    decoration: InputDecoration(
-                      labelText: 'Harga (Rp)',
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding:
-                          const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 8),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: editBarcodeCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Barcode',
+                    hintText: 'Kosongkan jika tidak memakai barcode',
+                    suffixIcon: IconButton(
+                      onPressed: onScanBarcode,
+                      tooltip: 'Scan barcode',
+                      icon: const Icon(Icons.qr_code_scanner_rounded),
                     ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   ),
                 ),
               ],

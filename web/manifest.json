@@ -1,6 +1,6 @@
 {
-    "name": "kasirku",
-    "short_name": "kasirku",
+    "name": "Kasir",
+    "short_name": "Kasir",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

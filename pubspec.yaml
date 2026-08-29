@@ -44,6 +44,9 @@ dependencies:
  
   # Login Google
   google_sign_in: ^6.2.1
+
+  # Pemindai barcode memakai kamera perangkat
+  mobile_scanner: ^7.4.0
  
   
 dev_dependencies:

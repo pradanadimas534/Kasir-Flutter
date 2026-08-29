@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'KasirKu',
+                'Kasir',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
