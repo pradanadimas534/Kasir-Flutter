@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/item_model.dart';
+import '../models/utang_model.dart';
 
 class FirestoreService {
   static final FirestoreService _i = FirestoreService._();
@@ -56,6 +57,52 @@ class FirestoreService {
 
   Future<void> deleteItem(String uid, int id) async {
     await _items(uid).doc('$id').delete();
+  }
+
+  // ── CATATAN UTANG ───────────────────────────────────────────────
+  CollectionReference<Map<String, dynamic>> _utang(String uid) =>
+      _users.doc(uid).collection('utang');
+
+  Future<List<UtangModel>> getUtang(String uid) async {
+    final snapshot = await _utang(uid).get();
+    final list = snapshot.docs.map((doc) {
+      final data = doc.data();
+      return UtangModel.fromMap({
+        ...data,
+        'id': (data['id'] as num?)?.toInt() ?? int.tryParse(doc.id) ?? 0,
+      });
+    }).toList();
+    // Utang belum lunas dulu, lalu urutkan dari yang terbaru.
+    list.sort((a, b) {
+      if (a.lunas != b.lunas) return a.lunas ? 1 : -1;
+      return b.tanggal.compareTo(a.tanggal);
+    });
+    return list;
+  }
+
+  Future<List<UtangModel>> addUtang(String uid, UtangModel utang) async {
+    final existing = await getUtang(uid);
+    final nextId = existing.isEmpty
+        ? 1
+        : existing.map((e) => e.id).reduce((a, b) => a > b ? a : b) + 1;
+    final baru = utang.copyWith(id: nextId);
+    await _utang(uid).doc('$nextId').set({
+      ...baru.toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return getUtang(uid);
+  }
+
+  Future<void> updateUtang(String uid, UtangModel utang) async {
+    await _utang(uid).doc('${utang.id}').set({
+      ...utang.toMap(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteUtang(String uid, int id) async {
+    await _utang(uid).doc('$id').delete();
   }
 
   Map<String, dynamic> _itemData(ItemModel item) => {

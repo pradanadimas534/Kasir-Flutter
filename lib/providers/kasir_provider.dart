@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/item_model.dart';
+import '../models/utang_model.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 
@@ -32,6 +33,7 @@ class KasirProvider extends ChangeNotifier {
   // ── STATE ────────────────────────────────────────────────────────
   List<ItemModel> items    = [];
   List<CartItem>  cart     = [];
+  List<UtangModel> utangList = [];
 
   bool   isLoading  = true;
   bool   isLoggedIn = false;
@@ -136,6 +138,13 @@ class KasirProvider extends ChangeNotifier {
       status = 'Gagal memuat data barang';
     }
 
+    // 2b. Muat catatan utang
+    try {
+      utangList = await _firestore.getUtang(uid);
+    } catch (_) {
+      utangList = [];
+    }
+
     // 3. Load pendapatan hari ini
     _loadPendapatan();
 
@@ -147,6 +156,7 @@ class KasirProvider extends ChangeNotifier {
   Future<void> _onLogout() async {
     items             = [];
     cart              = [];
+    utangList         = [];
     isLoggedIn        = false;
     pendapatanHariIni = 0;
     transaksiHariIni  = 0;
@@ -396,6 +406,77 @@ class KasirProvider extends ChangeNotifier {
     items[idx].price = value < 0 ? 0 : value;
     await _firestore.updateItem(uid, items[idx]);
     notifyListeners();
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  CATATAN UTANG
+  // ════════════════════════════════════════════════════════════════
+  static const _namaBulan = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+  ];
+
+  String formatTanggal(DateTime d) =>
+      '${d.day} ${_namaBulan[d.month - 1]} ${d.year}';
+
+  List<UtangModel> get utangBelumLunas =>
+      utangList.where((u) => !u.lunas).toList();
+
+  double get totalUtangBelumLunas =>
+      utangBelumLunas.fold(0.0, (sum, u) => sum + u.total);
+
+  int get jumlahUtangBelumLunas => utangBelumLunas.length;
+
+  UtangModel? cariUtang(int id) {
+    for (final u in utangList) {
+      if (u.id == id) return u;
+    }
+    return null;
+  }
+
+  Future<void> tambahUtang({
+    required String nama,
+    required DateTime tanggal,
+    required List<UtangItem> barang,
+    String catatan = '',
+  }) async {
+    final baru = UtangModel(
+      id: 0,
+      nama: nama.trim(),
+      tanggal: tanggal,
+      barang: barang,
+      catatan: catatan.trim(),
+    );
+    utangList = await _firestore.addUtang(uid, baru);
+    notifyListeners();
+  }
+
+  Future<void> hapusUtang(int id) async {
+    await _firestore.deleteUtang(uid, id);
+    utangList.removeWhere((u) => u.id == id);
+    notifyListeners();
+  }
+
+  /// Tandai lunas / batal lunas ketika pengutang melunasi.
+  Future<void> setUtangLunas(int id, bool lunas) async {
+    final idx = utangList.indexWhere((u) => u.id == id);
+    if (idx == -1) return;
+    final lama = utangList[idx];
+    final baru = lama.copyWith(
+      lunas: lunas,
+      tanggalLunas: lunas ? DateTime.now() : null,
+      clearTanggalLunas: !lunas,
+    );
+    utangList[idx] = baru;
+    notifyListeners();
+    try {
+      await _firestore.updateUtang(uid, baru);
+    } catch (e) {
+      // Gagal simpan -> kembalikan nilai lama supaya UI tidak menipu.
+      utangList[idx] = lama;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   // ════════════════════════════════════════════════════════════════

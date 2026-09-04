@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/kasir_provider.dart';
 import 'kasir_screen.dart';
 import 'stok_screen.dart';
+import 'utang_screen.dart';
 import 'laporan_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _pages = const [
     KasirScreen(),
     StokScreen(),
+    UtangScreen(),
     LaporanScreen(),
   ];
 
@@ -39,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // ── AppBar ───────────────────────────────────────────────────
       appBar: AppBar(
-        backgroundColor: Colors.green,
+        backgroundColor: Colors.red,
         foregroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -142,22 +144,27 @@ class _HomeScreenState extends State<HomeScreen> {
           onDestinationSelected: (i) => setState(() => _currentIndex = i),
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
-          indicatorColor: Colors.green.shade50,
+          indicatorColor: Colors.red.shade50,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.calculate_outlined),
-              selectedIcon: Icon(Icons.calculate, color: Colors.green),
+              selectedIcon: Icon(Icons.calculate, color: Colors.red),
               label: 'Kasir',
             ),
             NavigationDestination(
               icon: Icon(Icons.inventory_2_outlined),
-              selectedIcon: Icon(Icons.inventory_2, color: Colors.green),
+              selectedIcon: Icon(Icons.inventory_2, color: Colors.red),
               label: 'Stok',
             ),
             NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined),
+              selectedIcon: Icon(Icons.menu_book, color: Colors.red),
+              label: 'Utang',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.bar_chart_outlined),
-              selectedIcon: Icon(Icons.bar_chart, color: Colors.green),
+              selectedIcon: Icon(Icons.bar_chart, color: Colors.red),
               label: 'Laporan',
             ),
           ],

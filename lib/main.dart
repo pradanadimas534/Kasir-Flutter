@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
       ),
       home: const _AuthGate(),
     );
@@ -73,7 +73,7 @@ class _LoadingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
-        child: CircularProgressIndicator(color: Colors.green),
+        child: CircularProgressIndicator(color: Colors.red),
       ),
     );
   }

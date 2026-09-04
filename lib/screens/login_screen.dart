@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: Colors.green,
+                  color: Colors.red,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: const Icon(
@@ -98,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.green,
+                            color: Colors.red,
                           ),
                         )
                       : Row(
@@ -140,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: Colors.red.shade50,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
@@ -167,14 +167,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _infoRow(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.green.shade700),
+        Icon(icon, size: 18, color: Colors.red.shade700),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             text,
             style: TextStyle(
               fontSize: 13,
-              color: Colors.green.shade800,
+              color: Colors.red.shade800,
             ),
           ),
         ),

@@ -131,7 +131,7 @@ class _HariIniCard extends StatelessWidget {
   final double total; final int transaksi; final String Function(double) format;
   const _HariIniCard({required this.total, required this.transaksi, required this.format});
   @override Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(18)),
+    padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(18)),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Row(children: [Icon(Icons.today_outlined, color: Colors.white70), SizedBox(width: 8), Text('HASIL HARI INI', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold))]),
       const SizedBox(height: 10), Text(format(total), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
@@ -162,7 +162,7 @@ class _PeriodTile extends StatelessWidget {
   const _PeriodTile({required this.item, required this.maxTotal, required this.format});
   @override Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-    child: Column(children: [Row(children: [Expanded(child: Text(item.label, style: const TextStyle(fontWeight: FontWeight.w600))), Text(format(item.total), style: const TextStyle(fontWeight: FontWeight.bold))]), const SizedBox(height: 9), ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: maxTotal == 0 ? 0 : item.total / maxTotal, minHeight: 7, backgroundColor: Colors.green.shade50, color: Colors.green)), const SizedBox(height: 6), Align(alignment: Alignment.centerLeft, child: Text('${item.transaksi} transaksi', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)))],),
+    child: Column(children: [Row(children: [Expanded(child: Text(item.label, style: const TextStyle(fontWeight: FontWeight.w600))), Text(format(item.total), style: const TextStyle(fontWeight: FontWeight.bold))]), const SizedBox(height: 9), ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: maxTotal == 0 ? 0 : item.total / maxTotal, minHeight: 7, backgroundColor: Colors.red.shade50, color: Colors.red)), const SizedBox(height: 6), Align(alignment: Alignment.centerLeft, child: Text('${item.transaksi} transaksi', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)))],),
   );
 }
 

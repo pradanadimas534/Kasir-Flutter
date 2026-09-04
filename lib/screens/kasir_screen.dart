@@ -223,10 +223,10 @@ class _KasirScreenState extends State<KasirScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? Colors.green : Colors.white,
+          color: active ? Colors.red : Colors.white,
           borderRadius: BorderRadius.circular(30),
           border: Border.all(
-            color: active ? Colors.green : Colors.grey.shade200,
+            color: active ? Colors.red : Colors.grey.shade200,
           ),
         ),
         child: Text(
@@ -443,13 +443,13 @@ class _ItemTile extends StatelessWidget {
                                 horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: qty == pre
-                                  ? Colors.green.shade50
+                                  ? Colors.red.shade50
                                   : Colors.grey.shade100,
                               borderRadius:
                                   BorderRadius.circular(8),
                               border: Border.all(
                                 color: qty == pre
-                                    ? Colors.green
+                                    ? Colors.red
                                     : Colors.grey.shade300,
                               ),
                             ),
@@ -461,7 +461,7 @@ class _ItemTile extends StatelessWidget {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: qty == pre
-                                    ? Colors.green.shade700
+                                    ? Colors.red.shade700
                                     : Colors.black87,
                               ),
                             ),
@@ -591,7 +591,7 @@ class _CartSheet extends StatelessWidget {
                   child: Row(
                     children: [
                       const Icon(Icons.shopping_cart_rounded,
-                          color: Colors.green, size: 20),
+                          color: Colors.red, size: 20),
                       const SizedBox(width: 8),
                       const Text('Keranjang',
                           style: TextStyle(
@@ -603,17 +603,17 @@ class _CartSheet extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.green.shade50,
+                            color: Colors.red.shade50,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                                color: Colors.green.shade200),
+                                color: Colors.red.shade200),
                           ),
                           child: Text(
                             '$cartCount item',
                             style: TextStyle(
                               fontSize:   11,
                               fontWeight: FontWeight.bold,
-                              color: Colors.green.shade700,
+                              color: Colors.red.shade700,
                             ),
                           ),
                         ),
@@ -794,7 +794,7 @@ class _CartSheet extends StatelessWidget {
                             child: const Text(
                               'Pas',
                               style: TextStyle(
-                                  color: Colors.green,
+                                  color: Colors.red,
                                   fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -858,7 +858,7 @@ class _CartSheet extends StatelessWidget {
                                 fontWeight: FontWeight.bold),
                           ),
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.green,
+                            backgroundColor: Colors.red,
                             disabledBackgroundColor:
                                 Colors.grey.shade200,
                             padding: const EdgeInsets.symmetric(
