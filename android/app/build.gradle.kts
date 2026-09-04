@@ -27,9 +27,32 @@ android {
         versionName = flutter.versionName
     }
 
+    // Keystore rilis tetap supaya SHA-1 aplikasi selalu sama (lokal & CI).
+    // File kasir.jks TIDAK ikut di-commit (lihat android/.gitignore):
+    //  - lokal  : buat sekali dengan perintah di README/instruksi
+    //  - CI     : di-decode dari secret KEYSTORE_BASE64 oleh workflow
+    // Kalau file tidak ada, jatuh kembali ke signing debug bawaan.
+    // Daftarkan SHA-1 keystore ini di Firebase Console agar Google Sign-In jalan.
+    val releaseKeystore = file("kasir.jks")
+
+    signingConfigs {
+        create("release") {
+            if (releaseKeystore.exists()) {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "kasirku123"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "kasirku"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "kasirku123"
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (releaseKeystore.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
