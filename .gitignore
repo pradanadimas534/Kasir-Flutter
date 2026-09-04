@@ -45,3 +45,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/.kotlin/
+
+# keystore & secret helper (jangan di-commit)
+/KEYSTORE_BASE64.txt
