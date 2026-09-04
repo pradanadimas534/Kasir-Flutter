@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Semua data milik user disimpan di bawah users/{uid}:
+    //   users/{uid}                       -> profil user
+    //   users/{uid}/items/{id}            -> barang
+    //   users/{uid}/pendapatan/{tanggal}  -> rekap penjualan
+    //   users/{uid}/utang/{id}            -> catatan utang
+    //   users/{uid}/<apa pun nanti>       -> otomatis ikut terlindungi
+    //
+    // Aturan: hanya pemilik akun yang sedang login boleh baca/tulis
+    // seluruh isi sub-tree miliknya. Karena pakai wildcard {document=**},
+    // menambah collection baru TIDAK perlu rule baru dan tidak akan kena
+    // "permission denied" lagi.
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /{document=**} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Semua path lain di luar users/{uid} ditolak secara default
+    // (tidak ada match = akses ditolak).
+  }
+}
