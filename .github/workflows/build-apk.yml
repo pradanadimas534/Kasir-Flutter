@@ -44,8 +44,19 @@ jobs:
             echo "::error::Isinya = seluruh isi file KEYSTORE_BASE64.txt di root project."
             exit 1
           fi
-          echo "$KEYSTORE_BASE64" | base64 -d > android/app/kasir.jks
-          echo "Keystore decoded ($(wc -c < android/app/kasir.jks) bytes)."
+          # Buang semua spasi/baris baru/CR sebelum decode supaya tidak korup.
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' \
+            | base64 -d --ignore-garbage > android/app/kasir.jks
+          echo "Keystore decoded: $(wc -c < android/app/kasir.jks) bytes"
+          if ! keytool -list -keystore android/app/kasir.jks \
+                -storepass "${KEYSTORE_PASSWORD:-kasirku123}" \
+                -alias "${KEY_ALIAS:-kasirku}" >/dev/null 2>&1; then
+            echo "::error::Keystore tidak bisa dibaca. Isi secret KEYSTORE_BASE64"
+            echo "::error::kemungkinan kepotong saat copy. Salin ULANG seluruh isi"
+            echo "::error::KEYSTORE_BASE64.txt (harus $(printf %s "$KEYSTORE_BASE64" | tr -d '[:space:]' | wc -c) char)."
+            exit 1
+          fi
+          echo "Keystore OK."
 
       - name: Build release APK
         run: flutter build apk --release
