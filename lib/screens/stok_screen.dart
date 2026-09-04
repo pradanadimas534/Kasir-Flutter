@@ -21,6 +21,7 @@ class _StokScreenState extends State<StokScreen> {
   final _priceCtrl = TextEditingController();
   final _stockCtrl = TextEditingController();
   final _barcodeCtrl = TextEditingController();
+  final _nameFocus = FocusNode();
   String _newType  = 'satuan';
   String _newUnit  = 'pcs';
   bool   _isSaving = false;
@@ -38,6 +39,7 @@ class _StokScreenState extends State<StokScreen> {
     _priceCtrl.dispose();
     _stockCtrl.dispose();
     _barcodeCtrl.dispose();
+    _nameFocus.dispose();
     _editStockCtrl.dispose();
     _editPriceCtrl.dispose();
     _editBarcodeCtrl.dispose();
@@ -114,7 +116,7 @@ class _StokScreenState extends State<StokScreen> {
                 icon: Icon(_showForm ? Icons.close : Icons.add),
                 label: Text(_showForm ? 'Tutup' : 'Tambah'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.green,
+                  backgroundColor: Colors.red,
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -162,31 +164,39 @@ class _StokScreenState extends State<StokScreen> {
                   _formField(
                     ctrl:        _nameCtrl,
                     label:       'Nama Barang',
-                    hint:        'Contoh: Telur Ayam',
+                    hint:        _newType == 'satuan'
+                        ? 'Contoh: Indomie Goreng'
+                        : 'Contoh: Telur / Beras / Tepung',
                     inputType:   TextInputType.text,
+                    focusNode:   _nameFocus,
                   ),
                   const SizedBox(height: 8),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _formField(
-                          ctrl: _barcodeCtrl,
-                          label: 'Barcode (opsional)',
-                          hint: 'Scan/tulis kode pada kemasan',
-                          inputType: TextInputType.text,
+                  // Barcode — hanya untuk barang satuan.
+                  // Barang timbang (telur, beras, tepung kiloan) tidak
+                  // punya barcode, jadi field ini disembunyikan.
+                  if (_newType == 'satuan') ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _formField(
+                            ctrl: _barcodeCtrl,
+                            label: 'Barcode (opsional)',
+                            hint: 'Scan atau ketik manual',
+                            inputType: TextInputType.text,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filledTonal(
-                        onPressed: () => _scanBarcodeUntuk(_barcodeCtrl),
-                        tooltip: 'Scan barcode',
-                        icon: const Icon(Icons.qr_code_scanner_rounded),
-                        color: Colors.green,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
+                        const SizedBox(width: 8),
+                        IconButton.filledTonal(
+                          onPressed: () => _scanBarcodeUntuk(_barcodeCtrl),
+                          tooltip: 'Scan barcode',
+                          icon: const Icon(Icons.qr_code_scanner_rounded),
+                          color: Colors.red,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
 
                   Row(
                     children: [
@@ -254,96 +264,80 @@ class _StokScreenState extends State<StokScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Tombol simpan
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _isSaving
-                          ? null
-                          : () async {
-                        final name  = _nameCtrl.text.trim();
-                        final price = double.tryParse(
-                                _priceCtrl.text) ??
-                            0;
-                        final stock = double.tryParse(
-                                _stockCtrl.text) ??
-                            0;
-
-                        if (name.isEmpty || price <= 0) {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(const SnackBar(
-                            content:
-                                Text('Isi nama dan harga dulu!'),
-                            backgroundColor: Colors.red,
-                          ));
-                          return;
-                        }
-
-                        setState(() => _isSaving = true);
-
-                        try {
-                          await p.addItem(
-                            name:  name,
-                            price: price,
-                            stock: stock,
-                            type:  _newType,
-                            unit:  _newType == 'satuan'
-                                ? 'pcs'
-                                : _newUnit,
-                            barcode: _barcodeCtrl.text,
-                          );
-                          if (!context.mounted) return;
-
-                          _nameCtrl.clear();
-                          _priceCtrl.clear();
-                          _stockCtrl.clear();
-                          _barcodeCtrl.clear();
-                          setState(() {
-                            _isSaving = false;
-                            _showForm = false;
-                          });
-
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(SnackBar(
-                            content:
-                                Text('$name berhasil ditambahkan'),
-                            backgroundColor: Colors.green,
-                          ));
-                        } catch (e) {
-                          if (!context.mounted) return;
-                          setState(() => _isSaving = false);
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(SnackBar(
-                            content: Text(
-                                'Gagal menambahkan barang: $e'),
-                            backgroundColor: Colors.red,
-                          ));
-                        }
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  // ── Tombol simpan ────────────────────────────────
+                  if (_newType == 'satuan') ...[
+                    // Mode cepat: isi nama + harga sekali, lalu tinggal
+                    // scan. "tit" — tersimpan, ganti nama + harga,
+                    // "tit" — tersimpan lagi, dan seterusnya.
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _isSaving ? null : _tambahCepatScan,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.qr_code_scanner_rounded),
+                        label: Text(
+                          _isSaving
+                              ? 'Menyimpan...'
+                              : 'Scan Barcode & Simpan',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
-                      child: _isSaving
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Simpan Barang',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold),
-                            ),
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    TextButton(
+                      onPressed: _isSaving
+                          ? null
+                          : () => _simpanBarang(tutupForm: true),
+                      child: const Text('Simpan tanpa barcode'),
+                    ),
+                  ] else
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _isSaving
+                            ? null
+                            : () => _simpanBarang(tutupForm: true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Simpan Barang',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -484,7 +478,7 @@ class _StokScreenState extends State<StokScreen> {
         padding: const EdgeInsets.symmetric(
             horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? Colors.green : Colors.grey.shade100,
+          color: active ? Colors.red : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -499,15 +493,105 @@ class _StokScreenState extends State<StokScreen> {
     );
   }
 
+  // ── Simpan barang dari form ────────────────────────────────────
+  /// Mengembalikan true kalau barang berhasil disimpan.
+  /// [tutupForm] = tutup form setelah simpan (dipakai mode manual);
+  /// kalau false, form dibiarkan terbuka & field dibersihkan supaya
+  /// siap untuk barang berikutnya (dipakai mode scan cepat).
+  Future<bool> _simpanBarang({required bool tutupForm}) async {
+    final p     = context.read<KasirProvider>();
+    final name  = _nameCtrl.text.trim();
+    final price = double.tryParse(_priceCtrl.text) ?? 0;
+    final stock = double.tryParse(_stockCtrl.text) ?? 0;
+
+    if (name.isEmpty || price <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Isi nama dan harga dulu!'),
+        backgroundColor: Colors.red,
+      ));
+      return false;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      await p.addItem(
+        name:  name,
+        price: price,
+        stock: stock,
+        type:  _newType,
+        unit:  _newType == 'satuan' ? 'pcs' : _newUnit,
+        // Barang timbang tidak pakai barcode.
+        barcode: _newType == 'satuan' ? _barcodeCtrl.text : '',
+      );
+      if (!mounted) return false;
+
+      _nameCtrl.clear();
+      _priceCtrl.clear();
+      _stockCtrl.clear();
+      _barcodeCtrl.clear();
+      setState(() {
+        _isSaving = false;
+        if (tutupForm) _showForm = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$name berhasil ditambahkan'),
+        backgroundColor: Colors.green,
+        duration: const Duration(milliseconds: 900),
+      ));
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Gagal menambahkan barang: $e'),
+        backgroundColor: Colors.red,
+      ));
+      return false;
+    }
+  }
+
+  // ── Mode scan cepat (barang satuan) ────────────────────────────
+  /// Pastikan nama & harga terisi lebih dulu, buka kamera, dan begitu
+  /// dapat barcode langsung simpan. Form tetap terbuka dengan fokus di
+  /// kolom Nama supaya bisa lanjut: tit — nambah, tit — nambah.
+  Future<void> _tambahCepatScan() async {
+    final name  = _nameCtrl.text.trim();
+    final price = double.tryParse(_priceCtrl.text) ?? 0;
+    if (name.isEmpty || price <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Tulis nama & harga dulu, baru scan barcode.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+    if (!mounted || barcode == null || barcode.isEmpty) return;
+
+    _barcodeCtrl.text = barcode;
+    final ok = await _simpanBarang(tutupForm: false);
+    if (ok && mounted) {
+      HapticFeedback.mediumImpact();
+      SystemSound.play(SystemSoundType.click);
+      _nameFocus.requestFocus();
+    }
+  }
+
   Widget _formField({
     required TextEditingController ctrl,
     required String label,
     required String hint,
     required TextInputType inputType,
     TextInputFormatter? formatter,
+    FocusNode? focusNode,
   }) {
     return TextField(
       controller: ctrl,
+      focusNode: focusNode,
       keyboardType: inputType,
       inputFormatters:
           formatter != null ? [formatter] : null,
@@ -639,7 +723,7 @@ class _ItemCard extends StatelessWidget {
                   onPressed: onAddStock,
                   icon: const Icon(Icons.add_box_outlined, size: 19),
                   tooltip: 'Tambah stok',
-                  color: Colors.green,
+                  color: Colors.red,
                   style: IconButton.styleFrom(
                     minimumSize: const Size(32, 32),
                   ),
@@ -667,7 +751,7 @@ class _ItemCard extends StatelessWidget {
                 TextButton(
                   onPressed: onSaveEdit,
                   child: const Text('Simpan',
-                      style: TextStyle(color: Colors.green)),
+                      style: TextStyle(color: Colors.red)),
                 ),
                 TextButton(
                   onPressed: onCancelEdit,
