@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
-import '../models/item_model.dart';
 import '../providers/kasir_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -15,10 +14,6 @@ enum ScanMode {
 
   /// Kamera tetap terbuka, tiap scan menambah barang ke keranjang kasir.
   cart,
-
-  /// Kamera tetap terbuka, kumpulkan barang, lalu tekan tombol untuk
-  /// menambahkan semuanya ke stok sekaligus.
-  stock,
 
   /// Kamera tetap terbuka, scan barcode barang yang sama berkali-kali
   /// untuk MENGHITUNG jumlah. Pop dengan ({barcode, count}); tidak
@@ -51,11 +46,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
   bool _hasScanned = false; // mode field: cegah pop ganda
   final Map<String, DateTime> _lastSeen = {}; // cooldown per kode
-
-  // Mode stock: kumpulan barang yang akan direstok
-  final Map<int, ItemModel> _stockItems = {};
-  final Map<int, double> _stockQty = {};
-  bool _committing = false;
 
   // Mode count: satu barcode terkunci + jumlah scan
   String? _countBarcode;
@@ -106,11 +96,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       case ScanMode.cart:
         if (_cooldownHit(value)) return;
         _handleCart(value);
-        return;
-
-      case ScanMode.stock:
-        if (_cooldownHit(value)) return;
-        _handleStock(value);
         return;
 
       case ScanMode.count:
@@ -173,60 +158,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
   }
 
-  void _handleStock(String value) {
-    final p = context.read<KasirProvider>();
-    final item = p.cariBarangDariBarcode(value);
-    if (item == null) {
-      HapticFeedback.heavyImpact();
-      _showFlash('Barcode $value belum terdaftar — daftarkan produk dulu',
-          AppColors.warning);
-      return;
-    }
-    HapticFeedback.mediumImpact();
-    SystemSound.play(SystemSoundType.click);
-    setState(() {
-      _stockItems[item.id] = item;
-      _stockQty[item.id] = (_stockQty[item.id] ?? 0) + 1;
-    });
-    _showFlash('${item.name} +1  (total ${_fmtQty(_stockQty[item.id]!)})',
-        AppColors.success);
-  }
-
-  String _fmtQty(double v) =>
-      v % 1 == 0 ? v.toInt().toString() : v.toStringAsFixed(2);
-
-  void _stepStock(int id, double delta) {
-    setState(() {
-      final next = (_stockQty[id] ?? 0) + delta;
-      if (next <= 0) {
-        _stockQty.remove(id);
-        _stockItems.remove(id);
-      } else {
-        _stockQty[id] = next;
-      }
-    });
-  }
-
-  Future<void> _commitStock() async {
-    if (_stockQty.isEmpty || _committing) return;
-    setState(() => _committing = true);
-    final p = context.read<KasirProvider>();
-    try {
-      for (final entry in _stockQty.entries) {
-        await p.tambahStok(entry.key, entry.value);
-      }
-      if (!mounted) return;
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _committing = false);
-      _showFlash('Gagal menyimpan stok: $e', AppColors.red);
-    }
-  }
-
   String get _title => switch (widget.mode) {
         ScanMode.cart => 'Scan ke keranjang',
-        ScanMode.stock => 'Scan restok stok',
         ScanMode.count => 'Scan jumlah stok',
         ScanMode.field => 'Scan barcode barang',
       };
@@ -327,21 +260,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               right: 0,
               bottom: 0,
               child: _CartBar(onDone: () => Navigator.pop(context)),
-            ),
-
-          if (widget.mode == ScanMode.stock)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _StockIntakeBar(
-                lines: _stockQty.entries
-                    .map((e) => (item: _stockItems[e.key]!, qty: e.value))
-                    .toList(),
-                committing: _committing,
-                onStep: _stepStock,
-                onCommit: _commitStock,
-              ),
             ),
 
           if (widget.mode == ScanMode.count)
@@ -492,131 +410,6 @@ class _CartBarState extends State<_CartBar> {
                         style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Bar restok (mode stock) ────────────────────────────────────────
-typedef _StockLine = ({ItemModel item, double qty});
-
-class _StockIntakeBar extends StatelessWidget {
-  final List<_StockLine> lines;
-  final bool committing;
-  final void Function(int id, double delta) onStep;
-  final VoidCallback onCommit;
-
-  const _StockIntakeBar({
-    required this.lines,
-    required this.committing,
-    required this.onStep,
-    required this.onCommit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final total = lines.fold<double>(0, (s, l) => s + l.qty);
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 16)],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-              child: Row(
-                children: [
-                  const Icon(Icons.inventory_2_rounded,
-                      color: AppColors.red, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    lines.isEmpty
-                        ? 'Belum ada barang discan'
-                        : '${lines.length} produk · ${total % 1 == 0 ? total.toInt() : total} pcs akan ditambahkan',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            if (lines.isNotEmpty)
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 230),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
-                  itemCount: lines.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 12),
-                  itemBuilder: (_, i) {
-                    final l = lines[i];
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            l.item.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 13),
-                          ),
-                        ),
-                        _StepBtn(
-                            icon: Icons.remove,
-                            onTap: () => onStep(l.item.id, -1)),
-                        SizedBox(
-                          width: 34,
-                          child: Text(
-                            l.qty % 1 == 0
-                                ? l.qty.toInt().toString()
-                                : l.qty.toStringAsFixed(2),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 14),
-                          ),
-                        ),
-                        _StepBtn(
-                            icon: Icons.add,
-                            onTap: () => onStep(l.item.id, 1)),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed:
-                      lines.isEmpty || committing ? null : onCommit,
-                  icon: committing
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.add_box_rounded),
-                  label: Text(committing ? 'Menyimpan...' : 'Tambahkan ke Stok',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
               ),
             ),
           ],

@@ -82,13 +82,6 @@ class _StokScreenState extends State<StokScreen> {
                   color: AppColors.ink,
                 ),
               ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: _scanRestok,
-                icon: const BarcodeIcon(size: 20),
-                label: const Text('Restok'),
-                style: TextButton.styleFrom(foregroundColor: AppColors.red),
-              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -474,22 +467,6 @@ class _StokScreenState extends State<StokScreen> {
     );
     if (!mounted || barcode == null) return;
     setState(() => controller.text = barcode);
-  }
-
-  /// Restok cepat: kamera tetap terbuka, scan semua barang yang sudah
-  /// terdaftar, atur jumlah, lalu tekan "Tambahkan ke Stok" untuk
-  /// menambah stok semuanya sekaligus.
-  Future<void> _scanRestok() async {
-    final ok = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => const BarcodeScannerScreen(mode: ScanMode.stock),
-      ),
-    );
-    if (!mounted || ok != true) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Stok barang berhasil ditambahkan'),
-      backgroundColor: AppColors.success,
-    ));
   }
 
   Widget _typeChip(String value, String label) {
