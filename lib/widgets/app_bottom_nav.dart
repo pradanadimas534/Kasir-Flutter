@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'app_ui.dart';
 
 /// Bottom nav merah dengan lekukan (notch) di tengah untuk tombol scan
 /// mengambang — sesuai desain Figma "dashboard".
@@ -107,7 +108,7 @@ class ScanFab extends StatelessWidget {
         elevation: 6,
         highlightElevation: 8,
         shape: const CircleBorder(),
-        child: const Icon(Icons.qr_code_scanner_rounded, size: 28),
+        child: const BarcodeIcon(light: true, size: 30),
       ),
     );
   }

@@ -203,8 +203,7 @@ class _StokScreenState extends State<StokScreen> {
                         IconButton.filledTonal(
                           onPressed: () => _scanBarcodeUntuk(_barcodeCtrl),
                           tooltip: 'Scan barcode',
-                          icon: const Icon(Icons.qr_code_scanner_rounded),
-                          color: Colors.red,
+                          icon: const BarcodeIcon(size: 22),
                         ),
                       ],
                     ),
@@ -295,7 +294,7 @@ class _StokScreenState extends State<StokScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(Icons.qr_code_scanner_rounded),
+                            : const BarcodeIcon(light: true, size: 22),
                         label: Text(
                           _isSaving
                               ? 'Menyimpan...'
@@ -865,7 +864,7 @@ class _ItemCard extends StatelessWidget {
                     suffixIcon: IconButton(
                       onPressed: onScanBarcode,
                       tooltip: 'Scan barcode',
-                      icon: const Icon(Icons.qr_code_scanner_rounded),
+                      icon: const BarcodeIcon(size: 22),
                     ),
                     filled: true,
                     fillColor: Colors.grey.shade50,

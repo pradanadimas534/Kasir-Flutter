@@ -126,8 +126,7 @@ class _KasirScreenState extends State<KasirScreen> {
                       trailing: IconButton(
                         onPressed: _scanBarcode,
                         tooltip: 'Scan barcode',
-                        icon: const Icon(Icons.qr_code_scanner_rounded,
-                            color: AppColors.red),
+                        icon: const BarcodeIcon(size: 24),
                       ),
                     ),
                   ),

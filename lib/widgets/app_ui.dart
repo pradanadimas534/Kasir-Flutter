@@ -117,6 +117,26 @@ class SearchPill extends StatelessWidget {
   }
 }
 
+/// Ikon barcode dari aset desain (bukan Material icon).
+/// [light] = versi putih untuk latar merah; selain itu versi merah.
+class BarcodeIcon extends StatelessWidget {
+  final bool light;
+  final double size;
+  const BarcodeIcon({super.key, this.light = false, this.size = 26});
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      light
+          ? 'assets/images/barcode_putih.png'
+          : 'assets/images/barcode_merah.png',
+      width: size,
+      height: size,
+      filterQuality: FilterQuality.high,
+    );
+  }
+}
+
 /// Chip filter — aktif merah, non-aktif abu terang. (font Inter, sesuai desain)
 class PillChip extends StatelessWidget {
   final String label;
