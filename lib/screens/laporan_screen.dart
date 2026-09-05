@@ -37,8 +37,24 @@ class _LaporanScreenState extends State<LaporanScreen> {
       onRefresh: () => p.loadRiwayatPendapatan(force: true),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
         children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                icon: const Icon(Icons.menu_rounded,
+                    color: Color(0xFFE51D2A), size: 28),
+              ),
+              const SizedBox(width: 4),
+              const Text('Laporan',
+                  style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 8),
           const Text('Laporan omzet', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text('Pantau hasil penjualan dan tren usaha Anda.', style: TextStyle(color: Colors.grey.shade600)),

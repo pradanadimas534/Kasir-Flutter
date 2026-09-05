@@ -1,3 +1,17 @@
 {
-    "cmake.ignoreCMakeListsMissing": true
+    "cmake.ignoreCMakeListsMissing": true,
+
+    // Project ini pakai Gradle 8.14 yang belum mendukung Java 26.
+    // Paksa semua tooling Java/Gradle di VS Code memakai JDK 17
+    // (JDK 26 di C:\oracleJdk-26 tetap dipakai project lain, tidak diutak-atik).
+    "jdk.jdkhome": "C:\\Program Files\\Java\\jdk-17",
+    "java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-17",
+    "java.import.gradle.java.home": "C:\\Program Files\\Java\\jdk-17",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-17",
+            "path": "C:\\Program Files\\Java\\jdk-17",
+            "default": true
+        }
+    ]
 }

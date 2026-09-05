@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/kasir_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_bottom_nav.dart';
+import 'barcode_scanner_screen.dart';
 import 'kasir_screen.dart';
 import 'stok_screen.dart';
 import 'utang_screen.dart';
@@ -24,6 +27,38 @@ class _HomeScreenState extends State<HomeScreen> {
     LaporanScreen(),
   ];
 
+  Future<void> _globalScan() async {
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+    if (!mounted || barcode == null) return;
+    final p = context.read<KasirProvider>();
+    final item = p.cariBarangDariBarcode(barcode);
+    if (item == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Barcode $barcode belum terdaftar pada barang.'),
+        backgroundColor: AppColors.warning,
+      ));
+      return;
+    }
+    if (item.stock <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${item.name} sedang habis.'),
+        backgroundColor: AppColors.red,
+      ));
+      return;
+    }
+    if (item.type != 'timbang') p.tambahKeCart(item);
+    setState(() => _currentIndex = 0);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(item.type == 'timbang'
+          ? '${item.name} — atur jumlah di keranjang'
+          : '${item.name} ditambahkan ke keranjang'),
+      backgroundColor: AppColors.success,
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<KasirProvider>();
@@ -31,304 +66,158 @@ class _HomeScreenState extends State<HomeScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: AppColors.red,
+        systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-      backgroundColor: const Color(0xfff5f7fb),
-      resizeToAvoidBottomInset: true,
-
-      // ── AppBar ───────────────────────────────────────────────────
-      appBar: AppBar(
-        backgroundColor: Colors.red,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.storefront_rounded, size: 22),
-            SizedBox(width: 8),
-            Text(
-              'Kasir',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
+        backgroundColor: AppColors.bg,
+        drawer: _AppDrawer(provider: p),
+        body: SafeArea(
+          bottom: false,
+          child: IndexedStack(index: _currentIndex, children: _pages),
         ),
-        actions: [
-          // Pendapatan hari ini — chip kompak agar tidak overflow di layar kecil
-          if (_currentIndex == 0)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width * 0.42,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: .18),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'Hari ini',
-                          style: TextStyle(fontSize: 9, color: Colors.white70),
-                        ),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            p.formatHarga(p.pendapatanHariIni),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          // Avatar user
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Center(
-              child: GestureDetector(
-                onTap: () => _showUserMenu(context, p),
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Colors.white24,
-                  child: Text(
-                    p.userName.isNotEmpty
-                        ? p.userName[0].toUpperCase()
-                        : 'U',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      // ── Body ─────────────────────────────────────────────────────
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
-
-      // ── Bottom Nav ───────────────────────────────────────────────
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: NavigationBar(
-          height: 64,
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (i) => setState(() => _currentIndex = i),
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          indicatorColor: Colors.red.shade50,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.calculate_outlined),
-              selectedIcon: Icon(Icons.calculate, color: Colors.red),
-              label: 'Kasir',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.inventory_2_outlined),
-              selectedIcon: Icon(Icons.inventory_2, color: Colors.red),
-              label: 'Stok',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.menu_book_outlined),
-              selectedIcon: Icon(Icons.menu_book, color: Colors.red),
-              label: 'Utang',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.bar_chart_outlined),
-              selectedIcon: Icon(Icons.bar_chart, color: Colors.red),
-              label: 'Laporan',
-            ),
-          ],
+        floatingActionButton: ScanFab(onPressed: _globalScan),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        bottomNavigationBar: AppBottomNav(
+          currentIndex: _currentIndex,
+          onTap: (i) => setState(() => _currentIndex = i),
         ),
-      ),
       ),
     );
   }
+}
 
-  // ── Menu user (avatar diklik) ────────────────────────────────────
-  void _showUserMenu(BuildContext context, KasirProvider p) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-            // Handle
+class _AppDrawer extends StatelessWidget {
+  final KasirProvider provider;
+  const _AppDrawer({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = provider;
+    return Drawer(
+      backgroundColor: AppColors.bg,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header profil
             Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Info user
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: Colors.green.shade100,
-                  child: Text(
-                    p.userName.isNotEmpty
-                        ? p.userName[0].toUpperCase()
-                        : 'U',
-                    style: TextStyle(
-                      color: Colors.green.shade700,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        p.userName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      Text(
-                        p.userEmail,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(),
-
-            // Statistik hari ini
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+              decoration: const BoxDecoration(gradient: AppColors.loginGradient),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          p.transaksiHariIni.toString(),
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
-                        ),
-                        const Text(
-                          'Transaksi',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Colors.white24,
+                    child: Text(
+                      p.userName.isNotEmpty ? p.userName[0].toUpperCase() : 'U',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                      ),
                     ),
                   ),
-                  Container(
-                    width: 1,
-                    height: 40,
-                    color: Colors.green.shade200,
+                  const SizedBox(height: 12),
+                  Text(
+                    p.userName.isEmpty ? 'Pengguna' : p.userName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          p.formatHarga(p.pendapatanHariIni),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
-                        ),
-                        const Text(
-                          'Pendapatan',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    p.userEmail,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: .85),
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // Tombol logout
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await p.logout();
-                },
-                icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text(
-                  'Keluar',
-                  style: TextStyle(color: Colors.red),
+            // Statistik hari ini
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: Colors.red.shade200),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                child: Row(
+                  children: [
+                    _Stat(
+                      value: p.transaksiHariIni.toString(),
+                      label: 'Transaksi hari ini',
+                    ),
+                    Container(width: 1, height: 38, color: AppColors.line),
+                    _Stat(
+                      value: p.formatHarga(p.pendapatanHariIni),
+                      label: 'Pendapatan',
+                    ),
+                  ],
                 ),
               ),
+            ),
+
+            const Spacer(),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.logout_rounded, color: AppColors.red),
+              title: const Text(
+                'Keluar',
+                style: TextStyle(
+                  color: AppColors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                await p.logout();
+              },
             ),
             const SizedBox(height: 8),
           ],
         ),
-        ),
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String value;
+  final String label;
+  const _Stat({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.red,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+        ],
       ),
     );
   }

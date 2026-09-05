@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/utang_model.dart';
 import '../providers/kasir_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 
 class UtangFormScreen extends StatefulWidget {
   const UtangFormScreen({super.key});
@@ -106,15 +108,17 @@ class _UtangFormScreenState extends State<UtangFormScreen> {
     final p = context.read<KasirProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xfff5f7fb),
-      appBar: AppBar(
-        backgroundColor: Colors.red,
-        foregroundColor: Colors.white,
-        title: const Text('Catat Utang Baru'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      backgroundColor: AppColors.bg,
+      body: Column(
         children: [
+          AppHeader(
+            title: 'Catat Utang Baru',
+            onBack: () => Navigator.pop(context),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: [
           // ── Nama orang ────────────────────────────────────────
           _label('Nama orang yang berutang'),
           const SizedBox(height: 6),
@@ -206,6 +210,9 @@ class _UtangFormScreenState extends State<UtangFormScreen> {
                     )
                   : const Text('Simpan Catatan Utang',
                       style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+              ],
             ),
           ),
         ],

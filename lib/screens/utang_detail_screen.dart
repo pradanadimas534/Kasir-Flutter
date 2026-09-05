@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/utang_model.dart';
 import '../providers/kasir_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 
 class UtangDetailScreen extends StatelessWidget {
   final int utangId;
@@ -20,22 +22,25 @@ class UtangDetailScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xfff5f7fb),
-      appBar: AppBar(
-        backgroundColor: Colors.red,
-        foregroundColor: Colors.white,
-        title: const Text('Detail Utang'),
-        actions: [
-          IconButton(
-            onPressed: () => _konfirmasiHapus(context, p, u),
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Hapus catatan',
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      backgroundColor: AppColors.bg,
+      body: Column(
         children: [
+          AppHeader(
+            title: 'Detail Utang',
+            onBack: () => Navigator.pop(context),
+            actions: [
+              IconButton(
+                onPressed: () => _konfirmasiHapus(context, p, u),
+                icon: const Icon(Icons.delete_outline,
+                    color: AppColors.inkSoft),
+                tooltip: 'Hapus catatan',
+              ),
+            ],
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: [
           // ── Kepala: nama + status ─────────────────────────────
           Container(
             padding: const EdgeInsets.all(16),
@@ -217,6 +222,9 @@ class UtangDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
+              ],
+            ),
+          ),
         ],
       ),
     );

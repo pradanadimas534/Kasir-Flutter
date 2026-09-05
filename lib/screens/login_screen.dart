@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/kasir_provider.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,147 +15,154 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     setState(() => _loading = true);
-
     final ok = await context.read<KasirProvider>().login();
-
     if (!mounted) return;
-
     if (!ok) {
       setState(() => _loading = false);
       final detail = context.read<KasirProvider>().loginError;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            detail.isEmpty ? 'Login gagal, coba lagi' : detail,
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(detail.isEmpty ? 'Login gagal, coba lagi' : detail),
+        backgroundColor: AppColors.red,
+      ));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xfff5f7fb),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // ── Logo ─────────────────────────────────────────────
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(
-                  Icons.storefront_rounded,
-                  color: Colors.white,
-                  size: 52,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Kasir',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Aplikasi kasir sederhana\nmasuk dengan akun Google',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade500,
-                  height: 1.6,
-                ),
-              ),
-              const SizedBox(height: 48),
-
-              // ── Tombol Login Google ───────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    elevation: 1,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: BorderSide(color: Colors.grey.shade200),
-                    ),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.red,
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'G',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Masuk dengan Google',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ── Info fitur ────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(14),
-                ),
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.loginGradient),
+        child: Stack(
+          children: [
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Column(
                   children: [
-                    _infoRow(
-                      Icons.storage_rounded,
-                      'Data barang tersimpan di Firebase',
+                    const SizedBox(height: 40),
+                    const Text(
+                      'Kasir Toko',
+                      style: TextStyle(
+                        fontFamily: 'Lobster',
+                        fontSize: 50,
+                        color: Colors.white,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Kasir & Operasional',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 18,
+                        color: Colors.white.withValues(alpha: .92),
+                      ),
+                    ),
+                    const Spacer(flex: 3),
+                    Image.asset(
+                      'assets/images/basket.png',
+                      width: 220,
+                      fit: BoxFit.contain,
+                    ),
+                    const Spacer(flex: 3),
+                    const Text(
+                      'Selamat datang!',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 28,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    _infoRow(
-                      Icons.restore_rounded,
-                      'Data otomatis tersinkron di semua perangkat',
+                    Text(
+                      'Login untuk melanjutkan ke aplikasi kasir',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                        color: Colors.white.withValues(alpha: .92),
+                      ),
                     ),
+                    const SizedBox(height: 26),
+                    _GoogleButton(onPressed: _loading ? null : _login),
+                    const Spacer(flex: 3),
+                    Text(
+                      'Dengan login, Anda setuju dengan',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: .9),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Syarat & Ketentuan dan Kebijakan Privasi',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
                   ],
+                ),
+              ),
+            ),
+
+            // Overlay loading (desain "Login2")
+            if (_loading)
+              Container(
+                color: Colors.black.withValues(alpha: .35),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 54,
+                  height: 54,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 4,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GoogleButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  const _GoogleButton({this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: Material(
+        color: const Color(0xFFFBECEC),
+        borderRadius: BorderRadius.circular(30),
+        elevation: 2,
+        shadowColor: Colors.black26,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(30),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const _GoogleG(),
+              const SizedBox(width: 12),
+              Text(
+                'Login dengan Google',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: onPressed == null
+                      ? const Color(0xFF9A9A9A)
+                      : const Color(0xFF141417),
                 ),
               ),
             ],
@@ -163,22 +171,30 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+}
 
-  Widget _infoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: Colors.red.shade700),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.red.shade800,
-            ),
-          ),
+/// "G" ala Google — pendekatan sederhana tanpa aset SVG.
+class _GoogleG extends StatelessWidget {
+  const _GoogleG();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 22,
+      height: 22,
+      alignment: Alignment.center,
+      decoration:
+          const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+      child: const Text(
+        'G',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 15,
+          color: Color(0xFF4285F4),
+          height: 1.0,
         ),
-      ],
+      ),
     );
   }
 }

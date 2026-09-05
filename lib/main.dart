@@ -7,6 +7,7 @@ import 'providers/kasir_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,10 +33,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Kasir',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
-      ),
+      theme: buildAppTheme(),
       home: const _AuthGate(),
     );
   }

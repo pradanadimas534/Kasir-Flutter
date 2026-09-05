@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/item_model.dart';
 import '../providers/kasir_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'barcode_scanner_screen.dart';
 
 class StokScreen extends StatefulWidget {
@@ -57,10 +59,32 @@ class _StokScreenState extends State<StokScreen> {
     }).toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+
+          // ── Header ─────────────────────────────────────────────
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                icon: const Icon(Icons.menu_rounded,
+                    color: AppColors.red, size: 28),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                'Stok Barang',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  color: AppColors.ink,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
 
           // ── Summary Cards ──────────────────────────────────────
           Row(
@@ -93,21 +117,10 @@ class _StokScreenState extends State<StokScreen> {
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: SearchPill(
                   controller: _searchCtrl,
+                  hint: 'Cari barang...',
                   onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Cari barang...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -116,11 +129,11 @@ class _StokScreenState extends State<StokScreen> {
                 icon: Icon(_showForm ? Icons.close : Icons.add),
                 label: Text(_showForm ? 'Tutup' : 'Tambah'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: AppColors.red,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
+                      horizontal: 16, vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
@@ -343,6 +356,15 @@ class _StokScreenState extends State<StokScreen> {
             ),
 
           // ── Daftar Barang ──────────────────────────────────────
+          if (filtered.isEmpty && !_showForm)
+            const Padding(
+              padding: EdgeInsets.only(top: 60),
+              child: AppEmptyState(
+                icon: Icons.inventory_2_outlined,
+                title: 'Tidak Ada Produk',
+                message: 'pencet tambah produk\nuntuk menambah produk',
+              ),
+            ),
           ...filtered.map((item) => _ItemCard(
                 item:         item,
                 editId:       _editId,

@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/item_model.dart';
 import '../providers/kasir_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'barcode_scanner_screen.dart';
 
 class KasirScreen extends StatefulWidget {
@@ -32,7 +34,7 @@ class _KasirScreenState extends State<KasirScreen> {
   void _toggleCart() {
     if (_cartOpen) {
       _sheetCtrl.animateTo(
-        0.08,
+        0.13,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
@@ -97,9 +99,9 @@ class _KasirScreenState extends State<KasirScreen> {
     final double bayar     = double.tryParse(_bayarCtrl.text) ?? 0;
     final double kembalian = bayar - p.total;
     final int    cartCount = p.cart.length;
-    // Ruang untuk keranjang collapsed (~8% body) + margin
-    final double cartPeek  = (MediaQuery.sizeOf(context).height * 0.08)
-        .clamp(56.0, 88.0);
+    // Ruang untuk keranjang collapsed (~13% body) + margin
+    final double cartPeek  = (MediaQuery.sizeOf(context).height * 0.13)
+        .clamp(90.0, 130.0);
 
     return Stack(
       children: [
@@ -108,52 +110,63 @@ class _KasirScreenState extends State<KasirScreen> {
           padding: EdgeInsets.fromLTRB(12, 12, 12, cartPeek + 12),
           child: Column(
             children: [
-              // Search
-              TextField(
-                controller: _searchCtrl,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Cari barang...',
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  suffixIcon: IconButton(
-                    onPressed: _scanBarcode,
-                    tooltip: 'Scan barcode',
-                    icon: const Icon(Icons.qr_code_scanner_rounded),
+              // Header: menu + search
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                    icon: const Icon(Icons.menu_rounded,
+                        color: AppColors.red, size: 28),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+                  Expanded(
+                    child: SearchPill(
+                      controller: _searchCtrl,
+                      hint: 'Cari barang...',
+                      onChanged: (_) => setState(() {}),
+                      trailing: IconButton(
+                        onPressed: _scanBarcode,
+                        tooltip: 'Scan barcode',
+                        icon: const Icon(Icons.qr_code_scanner_rounded,
+                            color: AppColors.red),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
 
               // Filter chips
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _filterChip('all',     'Semua'),
-                    const SizedBox(width: 8),
-                    _filterChip('satuan',  '📦 Satuan'),
-                    const SizedBox(width: 8),
-                    _filterChip('timbang', '⚖️ Timbang'),
+                    PillChip(
+                        label: 'All',
+                        active: _filter == 'all',
+                        onTap: () => setState(() => _filter = 'all')),
+                    const SizedBox(width: 10),
+                    PillChip(
+                        label: 'Satuan',
+                        active: _filter == 'satuan',
+                        onTap: () => setState(() => _filter = 'satuan')),
+                    const SizedBox(width: 10),
+                    PillChip(
+                        label: 'Timbangan',
+                        active: _filter == 'timbang',
+                        onTap: () => setState(() => _filter = 'timbang')),
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
 
               // Grid barang
               Expanded(
                 child: filtered.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Tidak ada barang',
-                          style: TextStyle(color: Colors.grey),
-                        ),
+                    ? const AppEmptyState(
+                        icon: Icons.inventory_2_outlined,
+                        title: 'Tidak Ada Produk',
+                        message:
+                            'Tambahkan produk lewat menu Stok\nuntuk mulai berjualan',
                       )
                     : GridView.builder(
                         gridDelegate:
@@ -175,11 +188,11 @@ class _KasirScreenState extends State<KasirScreen> {
         // ── Bottom Sheet Keranjang ───────────────────────────────
         DraggableScrollableSheet(
           controller:      _sheetCtrl,
-          initialChildSize: 0.08,
-          minChildSize:    0.08,
+          initialChildSize: 0.13,
+          minChildSize:    0.13,
           maxChildSize:    0.92,
           snap:            true,
-          snapSizes:       const [0.08, 0.75, 0.92],
+          snapSizes:       const [0.13, 0.75, 0.92],
           builder: (_, scrollCtrl) => _CartSheet(
             scrollController: scrollCtrl,
             sheetController:  _sheetCtrl,
@@ -216,30 +229,6 @@ class _KasirScreenState extends State<KasirScreen> {
     );
   }
 
-  Widget _filterChip(String value, String label) {
-    final active = _filter == value;
-    return GestureDetector(
-      onTap: () => setState(() => _filter = value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? Colors.red : Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(
-            color: active ? Colors.red : Colors.grey.shade200,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize:   13,
-            fontWeight: FontWeight.w500,
-            color: active ? Colors.white : Colors.grey.shade700,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ── Tile barang ──────────────────────────────────────────────────

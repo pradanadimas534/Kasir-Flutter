@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/utang_model.dart';
 import '../providers/kasir_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_ui.dart';
 import 'utang_detail_screen.dart';
 import 'utang_form_screen.dart';
 
@@ -13,104 +15,141 @@ class UtangScreen extends StatefulWidget {
 }
 
 class _UtangScreenState extends State<UtangScreen> {
+  final _searchCtrl = TextEditingController();
   String _filter = 'belum'; // 'belum' | 'lunas' | 'semua'
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<KasirProvider>();
+    final q = _searchCtrl.text.trim().toLowerCase();
 
     final list = p.utangList.where((u) {
-      if (_filter == 'belum') return !u.lunas;
-      if (_filter == 'lunas') return u.lunas;
-      return true;
+      final byStatus = _filter == 'belum'
+          ? !u.lunas
+          : _filter == 'lunas'
+              ? u.lunas
+              : true;
+      final bySearch = q.isEmpty || u.nama.toLowerCase().contains(q);
+      return byStatus && bySearch;
     }).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xfff5f7fb),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _bukaForm(context),
-        backgroundColor: Colors.red,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Catat Utang'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 96),
-        children: [
-          const Text('Catatan Utang',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text('Siapa berutang, kapan, dan barang apa saja.',
-              style: TextStyle(color: Colors.grey.shade600)),
-          const SizedBox(height: 16),
-
-          // ── Ringkasan ─────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(18),
+    return Column(
+      children: [
+        AppHeader(
+          title: 'Catatan Utang',
+          actions: [
+            IconButton(
+              onPressed: () => _bukaForm(context),
+              tooltip: 'Catat utang baru',
+              icon: const Icon(Icons.person_add_alt_1_rounded,
+                  color: AppColors.inkSoft),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(children: [
-                  Icon(Icons.account_balance_wallet_outlined,
-                      color: Colors.white70, size: 18),
-                  SizedBox(width: 8),
-                  Text('TOTAL UTANG BELUM LUNAS',
-                      style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold)),
-                ]),
-                const SizedBox(height: 10),
-                Text(
-                  p.formatHarga(p.totalUtangBelumLunas),
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${p.jumlahUtangBelumLunas} catatan belum dilunasi',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // ── Filter ────────────────────────────────────────────
-          Row(
+          ],
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 100),
             children: [
-              _filterChip('belum', 'Belum Lunas'),
-              const SizedBox(width: 8),
-              _filterChip('lunas', 'Lunas'),
-              const SizedBox(width: 8),
-              _filterChip('semua', 'Semua'),
+              // Ringkasan total belum lunas
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: AppColors.loginGradient,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(children: [
+                      Icon(Icons.account_balance_wallet_outlined,
+                          color: Colors.white70, size: 18),
+                      SizedBox(width: 8),
+                      Text('TOTAL UTANG BELUM LUNAS',
+                          style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    ]),
+                    const SizedBox(height: 10),
+                    Text(
+                      p.formatHarga(p.totalUtangBelumLunas),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${p.jumlahUtangBelumLunas} catatan belum dilunasi',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              SearchPill(
+                controller: _searchCtrl,
+                hint: 'Cari nama...',
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    PillChip(
+                        label: 'Belum Lunas',
+                        active: _filter == 'belum',
+                        onTap: () => setState(() => _filter = 'belum')),
+                    const SizedBox(width: 10),
+                    PillChip(
+                        label: 'Lunas',
+                        active: _filter == 'lunas',
+                        onTap: () => setState(() => _filter = 'lunas')),
+                    const SizedBox(width: 10),
+                    PillChip(
+                        label: 'Semua',
+                        active: _filter == 'semua',
+                        onTap: () => setState(() => _filter = 'semua')),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              if (list.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 60),
+                  child: AppEmptyState(
+                    icon: Icons.inbox_outlined,
+                    title: 'Tidak Ada data',
+                    message: 'tekan + di kanan atas\nuntuk menambahkan data',
+                  ),
+                )
+              else
+                ...list.map((u) => _UtangCard(
+                      utang: u,
+                      provider: p,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => UtangDetailScreen(utangId: u.id),
+                        ),
+                      ),
+                      onLunas:
+                          u.lunas ? null : () => _tandaiLunas(context, p, u),
+                    )),
             ],
           ),
-          const SizedBox(height: 12),
-
-          // ── Daftar ────────────────────────────────────────────
-          if (list.isEmpty)
-            _kosong()
-          else
-            ...list.map((u) => _UtangCard(
-                  utang: u,
-                  provider: p,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => UtangDetailScreen(utangId: u.id),
-                    ),
-                  ),
-                  onLunas: u.lunas ? null : () => _tandaiLunas(context, p, u),
-                )),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -122,7 +161,7 @@ class _UtangScreenState extends State<UtangScreen> {
     if (added == true && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Catatan utang tersimpan'),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.success,
       ));
     }
   }
@@ -134,66 +173,16 @@ class _UtangScreenState extends State<UtangScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Utang ${u.nama} ditandai lunas'),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.success,
       ));
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Gagal menyimpan: $e'),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.red,
       ));
     }
   }
-
-  Widget _filterChip(String value, String label) {
-    final active = _filter == value;
-    return GestureDetector(
-      onTap: () => setState(() => _filter = value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? Colors.red : Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(
-            color: active ? Colors.red : Colors.grey.shade200,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: active ? Colors.white : Colors.grey.shade700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _kosong() => Container(
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Icon(Icons.inbox_outlined, size: 40, color: Colors.grey.shade400),
-            const SizedBox(height: 8),
-            Text(
-              _filter == 'lunas'
-                  ? 'Belum ada utang yang lunas'
-                  : _filter == 'belum'
-                      ? 'Tidak ada utang yang belum lunas'
-                      : 'Belum ada catatan utang',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 4),
-            Text('Tekan tombol "Catat Utang" untuk menambah.',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-          ],
-        ),
-      );
 }
 
 class _UtangCard extends StatelessWidget {
@@ -225,9 +214,9 @@ class _UtangCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppColors.softShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,12 +233,12 @@ class _UtangCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: u.lunas
-                        ? Colors.green.shade50
-                        : Colors.red.shade50,
+                        ? AppColors.success.withValues(alpha: .12)
+                        : AppColors.red.withValues(alpha: .10),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -257,9 +246,7 @@ class _UtangCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
-                      color: u.lunas
-                          ? Colors.green.shade700
-                          : Colors.red.shade700,
+                      color: u.lunas ? AppColors.success : AppColors.red,
                     ),
                   ),
                 ),
@@ -269,23 +256,24 @@ class _UtangCard extends StatelessWidget {
             Row(
               children: [
                 const Icon(Icons.event_outlined,
-                    size: 13, color: Colors.grey),
+                    size: 13, color: AppColors.textMuted),
                 const SizedBox(width: 4),
                 Text(provider.formatTanggal(u.tanggal),
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textMuted)),
               ],
             ),
             const SizedBox(height: 6),
             Row(
               children: [
                 const Icon(Icons.shopping_bag_outlined,
-                    size: 13, color: Colors.grey),
+                    size: 13, color: AppColors.textMuted),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     _ringkasBarang,
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey.shade700),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.inkSoft),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -299,7 +287,7 @@ class _UtangCard extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
-                  color: u.lunas ? Colors.grey : Colors.red.shade700,
+                  color: u.lunas ? AppColors.textMuted : AppColors.red,
                 ),
               ),
             ],
@@ -312,8 +300,9 @@ class _UtangCard extends StatelessWidget {
                   icon: const Icon(Icons.check_circle_outline, size: 16),
                   label: const Text('Lunas'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.green.shade700,
-                    side: BorderSide(color: Colors.green.shade300),
+                    foregroundColor: AppColors.success,
+                    side: BorderSide(
+                        color: AppColors.success.withValues(alpha: .5)),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 4),
                     minimumSize: const Size(0, 34),
