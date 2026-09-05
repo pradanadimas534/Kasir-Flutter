@@ -82,6 +82,13 @@ class _StokScreenState extends State<StokScreen> {
                   color: AppColors.ink,
                 ),
               ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _scanRestok,
+                icon: const BarcodeIcon(size: 20),
+                label: const Text('Restok'),
+                style: TextButton.styleFrom(foregroundColor: AppColors.red),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -278,9 +285,10 @@ class _StokScreenState extends State<StokScreen> {
 
                   // ── Tombol simpan ────────────────────────────────
                   if (_newType == 'satuan') ...[
-                    // Mode cepat: isi nama + harga sekali, lalu tinggal
-                    // scan. "tit" — tersimpan, ganti nama + harga,
-                    // "tit" — tersimpan lagi, dan seterusnya.
+                    // Produk BARU satu per satu: isi nama + harga, lalu
+                    // scan barcode -> produk tersimpan, form siap untuk
+                    // produk berikutnya. (Untuk menambah stok barang yang
+                    // sudah ada, pakai tombol "Restok" di atas.)
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
@@ -298,7 +306,7 @@ class _StokScreenState extends State<StokScreen> {
                         label: Text(
                           _isSaving
                               ? 'Menyimpan...'
-                              : 'Scan Barcode & Simpan',
+                              : 'Scan & Simpan Produk Baru',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold),
                         ),
@@ -486,6 +494,22 @@ class _StokScreenState extends State<StokScreen> {
     );
     if (!mounted || barcode == null) return;
     setState(() => controller.text = barcode);
+  }
+
+  /// Restok cepat: kamera tetap terbuka, scan semua barang yang sudah
+  /// terdaftar, atur jumlah, lalu tekan "Tambahkan ke Stok" untuk
+  /// menambah stok semuanya sekaligus.
+  Future<void> _scanRestok() async {
+    final ok = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => const BarcodeScannerScreen(mode: ScanMode.stock),
+      ),
+    );
+    if (!mounted || ok != true) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Stok barang berhasil ditambahkan'),
+      backgroundColor: AppColors.success,
+    ));
   }
 
   Widget _typeChip(String value, String label) {

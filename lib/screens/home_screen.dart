@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _globalScan() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const BarcodeScannerScreen(cartMode: true),
+        builder: (_) => const BarcodeScannerScreen(mode: ScanMode.cart),
       ),
     );
     if (!mounted) return;
