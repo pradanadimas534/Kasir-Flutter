@@ -283,81 +283,61 @@ class _StokScreenState extends State<StokScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // ── Tombol simpan ────────────────────────────────
+                  // ── Aksi form ───────────────────────────────────
+                  // Alur: isi nama + harga -> (opsional) scan barcode
+                  // berkali-kali untuk MENGHITUNG stok awal -> tekan
+                  // "Simpan Barang". Scan TIDAK menyimpan produk.
                   if (_newType == 'satuan') ...[
-                    // Produk BARU satu per satu: isi nama + harga, lalu
-                    // scan barcode -> produk tersimpan, form siap untuk
-                    // produk berikutnya. (Untuk menambah stok barang yang
-                    // sudah ada, pakai tombol "Restok" di atas.)
                     SizedBox(
                       width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _isSaving ? null : _tambahCepatScan,
-                        icon: _isSaving
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const BarcodeIcon(light: true, size: 22),
-                        label: Text(
-                          _isSaving
-                              ? 'Menyimpan...'
-                              : 'Scan & Simpan Produk Baru',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold),
-                        ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12),
+                      child: OutlinedButton.icon(
+                        onPressed: _isSaving ? null : _scanHitungStok,
+                        icon: const BarcodeIcon(size: 20),
+                        label: const Text('Scan Barcode (hitung stok)'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.red,
+                          side: const BorderSide(
+                              color: AppColors.red, width: 1.3),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    TextButton(
+                    const SizedBox(height: 8),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
                       onPressed: _isSaving
                           ? null
                           : () => _simpanBarang(tutupForm: true),
-                      child: const Text('Simpan tanpa barcode'),
-                    ),
-                  ] else
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _isSaving
-                            ? null
-                            : () => _simpanBarang(tutupForm: true),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.red,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        child: _isSaving
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Simpan Barang',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold),
-                              ),
                       ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Simpan Barang',
+                              style:
+                                  TextStyle(fontWeight: FontWeight.bold),
+                            ),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -597,33 +577,28 @@ class _StokScreenState extends State<StokScreen> {
     }
   }
 
-  // ── Mode scan cepat (barang satuan) ────────────────────────────
-  /// Pastikan nama & harga terisi lebih dulu, buka kamera, dan begitu
-  /// dapat barcode langsung simpan. Form tetap terbuka dengan fokus di
-  /// kolom Nama supaya bisa lanjut: tit — nambah, tit — nambah.
-  Future<void> _tambahCepatScan() async {
-    final name  = _nameCtrl.text.trim();
-    final price = double.tryParse(_priceCtrl.text) ?? 0;
-    if (name.isEmpty || price <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Tulis nama & harga dulu, baru scan barcode.'),
-        backgroundColor: Colors.red,
-      ));
-      return;
-    }
-
-    final barcode = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+  // ── Scan penghitung stok (barang satuan) ──────────────────────
+  /// Buka kamera: scan barcode barang yang sama berkali-kali, tiap scan
+  /// menambah jumlah stok awal. Barcode + jumlah dikembalikan ke form.
+  /// Produk BARU baru disimpan saat tombol "Simpan Barang" ditekan.
+  Future<void> _scanHitungStok() async {
+    final r = await Navigator.of(context).push<({String barcode, int count})>(
+      MaterialPageRoute(
+        builder: (_) => const BarcodeScannerScreen(mode: ScanMode.count),
+      ),
     );
-    if (!mounted || barcode == null || barcode.isEmpty) return;
-
-    _barcodeCtrl.text = barcode;
-    final ok = await _simpanBarang(tutupForm: false);
-    if (ok && mounted) {
-      HapticFeedback.mediumImpact();
-      SystemSound.play(SystemSoundType.click);
-      _nameFocus.requestFocus();
-    }
+    if (!mounted || r == null) return;
+    setState(() {
+      _barcodeCtrl.text = r.barcode;
+      final existing = double.tryParse(_stockCtrl.text) ?? 0;
+      final total = existing + r.count;
+      _stockCtrl.text =
+          total % 1 == 0 ? total.toInt().toString() : total.toString();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Barcode diisi · stok awal +${r.count}'),
+      backgroundColor: AppColors.success,
+    ));
   }
 
   Widget _formField({

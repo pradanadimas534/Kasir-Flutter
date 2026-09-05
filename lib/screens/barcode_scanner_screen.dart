@@ -19,6 +19,11 @@ enum ScanMode {
   /// Kamera tetap terbuka, kumpulkan barang, lalu tekan tombol untuk
   /// menambahkan semuanya ke stok sekaligus.
   stock,
+
+  /// Kamera tetap terbuka, scan barcode barang yang sama berkali-kali
+  /// untuk MENGHITUNG jumlah. Pop dengan ({barcode, count}); tidak
+  /// menyimpan apa pun — dipakai form "tambah produk".
+  count,
 }
 
 class BarcodeScannerScreen extends StatefulWidget {
@@ -51,6 +56,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   final Map<int, ItemModel> _stockItems = {};
   final Map<int, double> _stockQty = {};
   bool _committing = false;
+
+  // Mode count: satu barcode terkunci + jumlah scan
+  String? _countBarcode;
+  int _count = 0;
 
   // Banner umpan balik scan terakhir
   String? _flashMsg;
@@ -103,7 +112,41 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         if (_cooldownHit(value)) return;
         _handleStock(value);
         return;
+
+      case ScanMode.count:
+        if (_cooldownHit(value)) return;
+        _handleCount(value);
+        return;
     }
+  }
+
+  void _handleCount(String value) {
+    if (_countBarcode == null) {
+      HapticFeedback.mediumImpact();
+      SystemSound.play(SystemSoundType.click);
+      setState(() {
+        _countBarcode = value;
+        _count = 1;
+      });
+      _showFlash('Barcode terkunci · jumlah 1', AppColors.success);
+      return;
+    }
+    if (value != _countBarcode) {
+      HapticFeedback.heavyImpact();
+      _showFlash('Barcode berbeda — scan produk yang sama', AppColors.warning);
+      return;
+    }
+    HapticFeedback.mediumImpact();
+    SystemSound.play(SystemSoundType.click);
+    setState(() => _count++);
+    _showFlash('Jumlah: $_count', AppColors.success);
+  }
+
+  void _stepCount(int delta) {
+    setState(() {
+      _count = (_count + delta).clamp(0, 100000);
+      if (_count == 0) _countBarcode = null;
+    });
   }
 
   void _handleCart(String value) {
@@ -184,6 +227,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   String get _title => switch (widget.mode) {
         ScanMode.cart => 'Scan ke keranjang',
         ScanMode.stock => 'Scan restok stok',
+        ScanMode.count => 'Scan jumlah stok',
         ScanMode.field => 'Scan barcode barang',
       };
 
@@ -297,6 +341,24 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 committing: _committing,
                 onStep: _stepStock,
                 onCommit: _commitStock,
+              ),
+            ),
+
+          if (widget.mode == ScanMode.count)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _CountBar(
+                barcode: _countBarcode,
+                count: _count,
+                onStep: _stepCount,
+                onDone: () => Navigator.pop(
+                  context,
+                  _countBarcode == null
+                      ? null
+                      : (barcode: _countBarcode!, count: _count),
+                ),
               ),
             ),
         ],
@@ -558,6 +620,91 @@ class _StockIntakeBar extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bar penghitung jumlah (mode count) ─────────────────────────────
+class _CountBar extends StatelessWidget {
+  final String? barcode;
+  final int count;
+  final void Function(int delta) onStep;
+  final VoidCallback onDone;
+
+  const _CountBar({
+    required this.barcode,
+    required this.count,
+    required this.onStep,
+    required this.onDone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 16)],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                barcode == null
+                    ? 'Scan barcode produk untuk mulai menghitung'
+                    : 'Barcode: $barcode',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textMuted),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Text('Stok awal',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 14)),
+                  const Spacer(),
+                  _StepBtn(icon: Icons.remove, onTap: () => onStep(-1)),
+                  SizedBox(
+                    width: 56,
+                    child: Text(
+                      '$count',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 22),
+                    ),
+                  ),
+                  _StepBtn(icon: Icons.add, onTap: () => onStep(1)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onDone,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.red,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    count > 0 ? 'Selesai · $count pcs' : 'Selesai',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
