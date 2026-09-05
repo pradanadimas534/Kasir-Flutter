@@ -5,7 +5,6 @@ import '../models/item_model.dart';
 import '../providers/kasir_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_ui.dart';
-import 'barcode_scanner_screen.dart';
 
 class KasirScreen extends StatefulWidget {
   const KasirScreen({super.key});
@@ -48,40 +47,6 @@ class _KasirScreenState extends State<KasirScreen> {
     setState(() => _cartOpen = !_cartOpen);
   }
 
-  Future<void> _scanBarcode() async {
-    final barcode = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
-    );
-    if (!mounted || barcode == null) return;
-
-    final p = context.read<KasirProvider>();
-    final item = p.cariBarangDariBarcode(barcode);
-    if (item == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Barcode $barcode belum terdaftar pada barang.'),
-        backgroundColor: Colors.orange,
-      ));
-      return;
-    }
-    if (item.stock <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('${item.name} sedang habis.'),
-        backgroundColor: Colors.red,
-      ));
-      return;
-    }
-
-    if (item.type == 'timbang') {
-      _ItemTile(item: item)._showTimbangDialog(context, p);
-      return;
-    }
-    p.tambahKeCart(item);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('${item.name} ditambahkan dari hasil scan'),
-      duration: const Duration(seconds: 2),
-      backgroundColor: Colors.green,
-    ));
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,11 +88,6 @@ class _KasirScreenState extends State<KasirScreen> {
                       controller: _searchCtrl,
                       hint: 'Cari barang...',
                       onChanged: (_) => setState(() {}),
-                      trailing: IconButton(
-                        onPressed: _scanBarcode,
-                        tooltip: 'Scan barcode',
-                        icon: const BarcodeIcon(size: 24),
-                      ),
                     ),
                   ),
                 ],
