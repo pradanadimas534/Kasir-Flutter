@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:provider/provider.dart';
 import '../providers/kasir_provider.dart';
 import '../theme/app_theme.dart';
@@ -29,7 +30,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarContrastEnforced: false,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.loginGradient),
         child: Stack(
@@ -127,6 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
           ],
         ),
+      ),
       ),
     );
   }

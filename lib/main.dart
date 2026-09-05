@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
@@ -11,6 +12,16 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Edge-to-edge: aplikasi menggambar di belakang status bar & tombol
+  // navigasi sistem, sehingga nav bar aplikasi menempel ke dasar layar
+  // dan bilah/pil gestur sistem jadi transparan menumpang di atasnya.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarContrastEnforced: false,
+  ));
 
   // Inisialisasi Firebase
   await Firebase.initializeApp(

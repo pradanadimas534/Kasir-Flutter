@@ -67,7 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
-        systemNavigationBarColor: AppColors.red,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarContrastEnforced: false,
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
