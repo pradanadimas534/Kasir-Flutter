@@ -28,35 +28,14 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   Future<void> _globalScan() async {
-    final barcode = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const BarcodeScannerScreen(cartMode: true),
+      ),
     );
-    if (!mounted || barcode == null) return;
-    final p = context.read<KasirProvider>();
-    final item = p.cariBarangDariBarcode(barcode);
-    if (item == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Barcode $barcode belum terdaftar pada barang.'),
-        backgroundColor: AppColors.warning,
-      ));
-      return;
-    }
-    if (item.stock <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('${item.name} sedang habis.'),
-        backgroundColor: AppColors.red,
-      ));
-      return;
-    }
-    if (item.type != 'timbang') p.tambahKeCart(item);
-    setState(() => _currentIndex = 0);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(item.type == 'timbang'
-          ? '${item.name} — atur jumlah di keranjang'
-          : '${item.name} ditambahkan ke keranjang'),
-      backgroundColor: AppColors.success,
-    ));
+    // Kembali dari mode scan -> buka tab Kasir untuk proses pembayaran.
+    setState(() => _currentIndex = 0);
   }
 
   @override
