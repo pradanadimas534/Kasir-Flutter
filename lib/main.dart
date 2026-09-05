@@ -13,6 +13,9 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Kunci ke potrait — aplikasi kasir tidak perlu rotasi.
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
   // Edge-to-edge: aplikasi menggambar di belakang status bar & tombol
   // navigasi sistem, sehingga nav bar aplikasi menempel ke dasar layar
   // dan bilah/pil gestur sistem jadi transparan menumpang di atasnya.
