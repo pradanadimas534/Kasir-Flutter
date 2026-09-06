@@ -5,6 +5,7 @@ import '../models/item_model.dart';
 import '../providers/kasir_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_ui.dart';
+import 'struk_screen.dart';
 
 class KasirScreen extends StatefulWidget {
   const KasirScreen({super.key});
@@ -168,24 +169,43 @@ class _KasirScreenState extends State<KasirScreen> {
             onToggle:         _toggleCart,
             onChanged:        () => setState(() {}),
             onBayar: () async {
+              // Ambil rincian keranjang SEBELUM diproses (prosesBayar
+              // mengosongkan cart).
+              final strukItems = p.cart
+                  .map((c) => StrukItem(
+                        nama: c.name,
+                        qty: c.qty,
+                        unit: c.unit,
+                        harga: c.price,
+                      ))
+                  .toList();
+              final strukTotal = p.total;
+
               await p.prosesBayar(bayar);
               if (!context.mounted) return;
+
               _bayarCtrl.clear();
               _sheetCtrl.animateTo(
-                0.08,
+                0.13,
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOut,
               );
               setState(() => _cartOpen = false);
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Transaksi berhasil! Kembalian ${p.formatHarga(kembalian)}',
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => StrukScreen(
+                  data: StrukData(
+                    waktu: DateTime.now(),
+                    kasir: p.userName.trim().isEmpty
+                        ? 'Kasir Toko'
+                        : p.userName,
+                    items: strukItems,
+                    total: strukTotal,
+                    bayar: bayar,
+                    kembalian: kembalian < 0 ? 0 : kembalian,
                   ),
-                  backgroundColor: Colors.green,
                 ),
-              );
+              ));
             },
           ),
         ),
