@@ -42,6 +42,7 @@ class KasirProvider extends ChangeNotifier {
 
   double pendapatanHariIni = 0;
   int    transaksiHariIni  = 0;
+  List<Map<String, dynamic>> barangTerjualHariIni = [];
   List<Map<String, dynamic>> riwayatPendapatan = [];
   bool laporanLoading = false;
 
@@ -160,6 +161,7 @@ class KasirProvider extends ChangeNotifier {
     isLoggedIn        = false;
     pendapatanHariIni = 0;
     transaksiHariIni  = 0;
+    barangTerjualHariIni = [];
     riwayatPendapatan = [];
     laporanLoading = false;
     status            = '';
@@ -173,6 +175,8 @@ class KasirProvider extends ChangeNotifier {
       final data = await _firestore.getPendapatanHariIni(uid);
       pendapatanHariIni = data['total']     as double;
       transaksiHariIni  = data['transaksi'] as int;
+      barangTerjualHariIni = List<Map<String, dynamic>>.from(
+          data['barang'] as List? ?? const <Map<String, dynamic>>[]);
       notifyListeners();
     } catch (_) {}
   }
@@ -291,13 +295,27 @@ class KasirProvider extends ChangeNotifier {
     }
 
     final totalBayar = total;
+    final barangTerjual = cart
+        .map((c) => {
+              'id': c.id,
+              'nama': c.name,
+              'jumlah': c.qty,
+              'satuan': c.unit,
+              'total': c.total,
+            })
+        .toList();
 
     // 1. Simpan perubahan barang ke Firestore
     await Future.wait(items.map((item) => _firestore.updateItem(uid, item)));
     cart.clear();
 
     // 2. Kirim ke Firestore (background)
-    _firestore.tambahPendapatan(uid: uid, total: totalBayar)
+    _firestore
+        .tambahPendapatan(
+          uid: uid,
+          total: totalBayar,
+          barang: barangTerjual,
+        )
         .then((_) {
           _loadPendapatan();
           loadRiwayatPendapatan(force: true);
@@ -423,7 +441,7 @@ class KasirProvider extends ChangeNotifier {
       utangList.where((u) => !u.lunas).toList();
 
   double get totalUtangBelumLunas =>
-      utangBelumLunas.fold(0.0, (sum, u) => sum + u.total);
+      utangBelumLunas.fold(0.0, (sum, u) => sum + u.sisa);
 
   int get jumlahUtangBelumLunas => utangBelumLunas.length;
 
@@ -437,14 +455,17 @@ class KasirProvider extends ChangeNotifier {
   Future<void> tambahUtang({
     required String nama,
     required DateTime tanggal,
-    required List<UtangItem> barang,
+    required double nominal,
     String catatan = '',
   }) async {
+    if (nama.trim().isEmpty || nominal <= 0) {
+      throw ArgumentError('Nama dan nominal utang wajib diisi.');
+    }
     final baru = UtangModel(
       id: 0,
       nama: nama.trim(),
       tanggal: tanggal,
-      barang: barang,
+      nominal: nominal,
       catatan: catatan.trim(),
     );
     utangList = await _firestore.addUtang(uid, baru);
@@ -457,15 +478,24 @@ class KasirProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Tandai lunas / batal lunas ketika pengutang melunasi.
-  Future<void> setUtangLunas(int id, bool lunas) async {
+  /// Catat pembayaran. Status menjadi lunas hanya saat sisa utang sudah nol.
+  Future<void> bayarUtang(int id, double nominalBayar) async {
     final idx = utangList.indexWhere((u) => u.id == id);
     if (idx == -1) return;
+    if (nominalBayar <= 0) {
+      throw ArgumentError('Nominal pelunasan harus lebih dari Rp 0.');
+    }
     final lama = utangList[idx];
+    if (lama.lunas) return;
+    if (nominalBayar > lama.sisa) {
+      throw ArgumentError('Nominal pelunasan melebihi sisa utang.');
+    }
+    final dibayarBaru = lama.totalDibayar + nominalBayar;
+    final sudahLunas = dibayarBaru >= lama.total;
     final baru = lama.copyWith(
-      lunas: lunas,
-      tanggalLunas: lunas ? DateTime.now() : null,
-      clearTanggalLunas: !lunas,
+      totalDibayar: dibayarBaru,
+      lunas: sudahLunas,
+      tanggalLunas: sudahLunas ? DateTime.now() : null,
     );
     utangList[idx] = baru;
     notifyListeners();

@@ -1,65 +1,37 @@
-/// Satu baris barang yang dihutang.
-class UtangItem {
-  final String nama;
-  final double jumlah;
-  final String satuan; // bebas: 'pcs', 'kg', 'bungkus', dst.
-  final double harga;  // harga per satuan; 0 kalau tidak dicatat
-
-  const UtangItem({
-    required this.nama,
-    this.jumlah = 1,
-    this.satuan = 'pcs',
-    this.harga = 0,
-  });
-
-  double get subtotal => harga * jumlah;
-
-  Map<String, dynamic> toMap() => {
-        'nama': nama,
-        'jumlah': jumlah,
-        'satuan': satuan,
-        'harga': harga,
-      };
-
-  factory UtangItem.fromMap(Map<String, dynamic> m) => UtangItem(
-        nama: m['nama'] as String? ?? '',
-        jumlah: (m['jumlah'] as num?)?.toDouble() ?? 1,
-        satuan: m['satuan'] as String? ?? 'pcs',
-        harga: (m['harga'] as num?)?.toDouble() ?? 0,
-      );
-}
-
 /// Satu catatan utang milik seseorang.
+///
+/// Catatan lama yang memuat daftar barang tetap bisa dibaca; catatan baru
+/// hanya membutuhkan nominal utang dan catatan opsional.
 class UtangModel {
   final int id;
-  final String nama;            // nama orang yang berutang
-  final DateTime tanggal;       // tanggal dia berutang
-  final List<UtangItem> barang; // barang apa saja yang dihutang
+  final String nama;
+  final DateTime tanggal;
+  final double nominal;
+  final double totalDibayar;
   final String catatan;
   final bool lunas;
   final DateTime? tanggalLunas;
 
-  UtangModel({
+  const UtangModel({
     required this.id,
     required this.nama,
     required this.tanggal,
-    required this.barang,
+    required this.nominal,
+    this.totalDibayar = 0,
     this.catatan = '',
     this.lunas = false,
     this.tanggalLunas,
   });
 
-  /// Total nilai utang. 0 kalau tidak ada harga yang dicatat.
-  double get total => barang.fold(0.0, (sum, b) => sum + b.subtotal);
-
-  /// Apakah minimal satu barang punya harga.
-  bool get adaHarga => barang.any((b) => b.harga > 0);
+  double get total => nominal;
+  double get sisa => (nominal - totalDibayar).clamp(0, double.infinity);
 
   UtangModel copyWith({
     int? id,
     String? nama,
     DateTime? tanggal,
-    List<UtangItem>? barang,
+    double? nominal,
+    double? totalDibayar,
     String? catatan,
     bool? lunas,
     DateTime? tanggalLunas,
@@ -69,7 +41,8 @@ class UtangModel {
         id: id ?? this.id,
         nama: nama ?? this.nama,
         tanggal: tanggal ?? this.tanggal,
-        barang: barang ?? this.barang,
+        nominal: nominal ?? this.nominal,
+        totalDibayar: totalDibayar ?? this.totalDibayar,
         catatan: catatan ?? this.catatan,
         lunas: lunas ?? this.lunas,
         tanggalLunas:
@@ -80,23 +53,35 @@ class UtangModel {
         'id': id,
         'nama': nama,
         'tanggal': tanggal.toIso8601String(),
-        'barang': barang.map((b) => b.toMap()).toList(),
+        'nominal': nominal,
+        'totalDibayar': totalDibayar,
         'catatan': catatan,
         'lunas': lunas,
         'tanggalLunas': tanggalLunas?.toIso8601String(),
       };
 
   factory UtangModel.fromMap(Map<String, dynamic> m) {
-    final rawBarang = (m['barang'] as List?) ?? const [];
+    // Migrasi ringan: nominal dokumen lama dihitung dari daftar barangnya.
+    final barangLama = (m['barang'] as List? ?? const []).fold<double>(
+      0,
+      (jumlah, item) {
+        final data = Map<String, dynamic>.from(item as Map);
+        return jumlah +
+            ((data['jumlah'] as num?)?.toDouble() ?? 1) *
+                ((data['harga'] as num?)?.toDouble() ?? 0);
+      },
+    );
+    final nominal = (m['nominal'] as num?)?.toDouble() ?? barangLama;
+    final totalDibayar = (m['totalDibayar'] as num?)?.toDouble() ??
+        ((m['lunas'] as bool? ?? false) ? nominal : 0);
     return UtangModel(
       id: (m['id'] as num?)?.toInt() ?? 0,
       nama: m['nama'] as String? ?? '',
       tanggal: DateTime.tryParse(m['tanggal'] as String? ?? '') ?? DateTime.now(),
-      barang: rawBarang
-          .map((e) => UtangItem.fromMap(Map<String, dynamic>.from(e as Map)))
-          .toList(),
+      nominal: nominal,
+      totalDibayar: totalDibayar.clamp(0, nominal),
       catatan: m['catatan'] as String? ?? '',
-      lunas: m['lunas'] as bool? ?? false,
+      lunas: m['lunas'] as bool? ?? totalDibayar >= nominal,
       tanggalLunas: (m['tanggalLunas'] as String?) == null
           ? null
           : DateTime.tryParse(m['tanggalLunas'] as String),

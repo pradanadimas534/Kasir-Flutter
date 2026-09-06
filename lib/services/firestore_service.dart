@@ -141,6 +141,7 @@ class FirestoreService {
   Future<void> tambahPendapatan({
     required String uid,
     required double total,
+    required List<Map<String, dynamic>> barang,
   }) async {
     final now     = DateTime.now();
     final tanggal = '${now.year}-'
@@ -155,16 +156,43 @@ class FirestoreService {
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       if (snap.exists) {
+        final data = snap.data() as Map<String, dynamic>;
+        final barangHariIni = Map<String, dynamic>.from(
+            data['barang'] as Map? ?? const <String, dynamic>{});
+        for (final item in barang) {
+          final id = item['id'].toString();
+          final lama = Map<String, dynamic>.from(
+              barangHariIni[id] as Map? ?? const <String, dynamic>{});
+          barangHariIni[id] = {
+            'nama': item['nama'],
+            'jumlah': ((lama['jumlah'] as num?)?.toDouble() ?? 0) +
+                (item['jumlah'] as num).toDouble(),
+            'total': ((lama['total'] as num?)?.toDouble() ?? 0) +
+                (item['total'] as num).toDouble(),
+            'satuan': item['satuan'],
+          };
+        }
         tx.update(ref, {
-          'total':      FieldValue.increment(total),
-          'transaksi':  FieldValue.increment(1),
-          'updatedAt':  FieldValue.serverTimestamp(),
+          'total': FieldValue.increment(total),
+          'transaksi': FieldValue.increment(1),
+          'barang': barangHariIni,
+          'updatedAt': FieldValue.serverTimestamp(),
         });
       } else {
+        final barangHariIni = <String, dynamic>{
+          for (final item in barang)
+            item['id'].toString(): {
+              'nama': item['nama'],
+              'jumlah': item['jumlah'],
+              'total': item['total'],
+              'satuan': item['satuan'],
+            },
+        };
         tx.set(ref, {
           'tanggal':    tanggal,
           'total':      total,
           'transaksi':  1,
+          'barang': barangHariIni,
           'createdAt':  FieldValue.serverTimestamp(),
           'updatedAt':  FieldValue.serverTimestamp(),
         });
@@ -186,15 +214,21 @@ class FirestoreService {
           .doc(tanggal)
           .get();
 
-      if (!doc.exists) return {'total': 0.0, 'transaksi': 0};
+      if (!doc.exists) {
+        return {'total': 0.0, 'transaksi': 0, 'barang': <Map<String, dynamic>>[]};
+      }
 
       final data = doc.data() as Map<String, dynamic>;
       return {
         'total':     (data['total']     as num).toDouble(),
         'transaksi': (data['transaksi'] as num).toInt(),
+        'barang': (data['barang'] as Map? ?? const <String, dynamic>{})
+            .values
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(),
       };
     } catch (_) {
-      return {'total': 0.0, 'transaksi': 0};
+      return {'total': 0.0, 'transaksi': 0, 'barang': <Map<String, dynamic>>[]};
     }
   }
 

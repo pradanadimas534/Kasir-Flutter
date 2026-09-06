@@ -11,27 +11,23 @@ class LaporanScreen extends StatefulWidget {
 }
 
 class _LaporanScreenState extends State<LaporanScreen> {
-  bool _tahunan = false;
-  int _jumlahPeriode = 6;
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<KasirProvider>().loadRiwayatPendapatan();
-    });
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => context.read<KasirProvider>().loadRiwayatPendapatan(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<KasirProvider>();
-    final now = DateTime.now();
-    final data = _buatPeriode(p.riwayatPendapatan, now);
-    final periodeIni = data.isEmpty ? _Periode('', now, 0, 0) : data.last;
-    final periodeLalu = data.length < 2 ? null : data[data.length - 2];
-    final selisih = periodeLalu == null ? 0.0 : periodeIni.total - periodeLalu.total;
-    final persen = periodeLalu == null || periodeLalu.total == 0
-        ? null : selisih / periodeLalu.total * 100;
+    final hari = _tujuhHariTerakhir(p, DateTime.now());
+    final kemarin = hari[hari.length - 2];
+    final hariIni = hari.last;
+    final rataRata = hari.take(6).fold<int>(0, (sum, h) => sum + h.transaksi) / 6;
+    final naik = hariIni.transaksi >= kemarin.transaksi;
+    final ramai = hariIni.transaksi > 0 && hariIni.transaksi >= rataRata;
 
     return RefreshIndicator(
       onRefresh: () => p.loadRiwayatPendapatan(force: true),
@@ -39,150 +35,187 @@ class _LaporanScreenState extends State<LaporanScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Scaffold.of(context).openDrawer(),
-                icon: const Icon(Icons.menu_rounded,
-                    color: Color(0xFFE51D2A), size: 28),
-              ),
-              const SizedBox(width: 4),
-              const Text('Laporan',
-                  style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text('Laporan omzet', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text('Pantau hasil penjualan dan tren usaha Anda.', style: TextStyle(color: Colors.grey.shade600)),
-          const SizedBox(height: 16),
-          _HariIniCard(total: p.pendapatanHariIni, transaksi: p.transaksiHariIni, format: p.formatHarga),
-          const SizedBox(height: 20),
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, icon: Icon(Icons.calendar_month_outlined), label: Text('Bulanan')),
-              ButtonSegment(value: true, icon: Icon(Icons.calendar_today_outlined), label: Text('Tahunan')),
-            ],
-            selected: {_tahunan},
-            onSelectionChanged: (value) => setState(() {
-              _tahunan = value.first;
-              _jumlahPeriode = _tahunan ? 2 : 3;
-            }),
-          ),
-          const SizedBox(height: 12),
           Row(children: [
-            Text('Bandingkan ', style: TextStyle(color: Colors.grey.shade700)),
-            DropdownButton<int>(
-              value: _jumlahPeriode,
-              underline: const SizedBox(),
-              items: (_tahunan ? [2, 3, 5] : [3, 6, 12]).map((jumlah) => DropdownMenuItem(
-                value: jumlah, child: Text('$jumlah ${_tahunan ? 'tahun' : 'bulan'} terakhir'),
-              )).toList(),
-              onChanged: (value) => setState(() => _jumlahPeriode = value!),
+            IconButton(
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              icon: const Icon(Icons.menu_rounded, color: Color(0xFFE51D2A), size: 28),
             ),
+            const SizedBox(width: 4),
+            const Text('Laporan', style: TextStyle(fontFamily: 'Poppins', fontSize: 20, fontWeight: FontWeight.w700)),
           ]),
-          const SizedBox(height: 8),
-          if (p.laporanLoading) const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))
-          else ...[
-            _TrendCard(
-              label: _tahunan ? 'Tahun ini' : 'Bulan ini',
-              total: periodeIni.total,
-              transaksi: periodeIni.transaksi,
-              selisih: selisih,
-              persen: persen,
-              pembanding: periodeLalu?.label,
-              format: p.formatHarga,
-            ),
-            const SizedBox(height: 20),
-            Text('Riwayat ${_tahunan ? 'tahunan' : 'bulanan'}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            if (data.every((item) => item.total == 0))
-              _EmptyReport(tahunan: _tahunan)
-            else
-              ...data.reversed.map((item) => _PeriodTile(item: item, maxTotal: data.map((e) => e.total).fold(0.0, (a, b) => a > b ? a : b), format: p.formatHarga)),
-          ],
+          const SizedBox(height: 10),
+          const Text('Penjualan hari ini', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('Lihat hasil jualan dan tingkat keramaian toko.', style: TextStyle(color: Colors.grey.shade600)),
+          const SizedBox(height: 16),
+          _HariIniCard(
+            total: p.pendapatanHariIni,
+            transaksi: p.transaksiHariIni,
+            format: p.formatHarga,
+          ),
+          const SizedBox(height: 20),
+          const Text('Barang yang terjual hari ini', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          _BarangHariIni(barang: p.barangTerjualHariIni, format: p.formatHarga),
+          const SizedBox(height: 20),
+          const Text('Ramai atau sepi?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          _StatusRamai(
+            transaksi: hariIni.transaksi,
+            kemarin: kemarin.transaksi,
+            rataRata: rataRata,
+            ramai: ramai,
+            naik: naik,
+          ),
+          const SizedBox(height: 20),
+          const Text('Grafik transaksi 7 hari terakhir', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('Jumlah transaksi per hari', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          const SizedBox(height: 10),
+          if (p.laporanLoading)
+            const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))
+          else
+            _GrafikTransaksi(data: hari),
         ],
       ),
     );
   }
 
-  List<_Periode> _buatPeriode(List<Map<String, dynamic>> riwayat, DateTime now) {
-    final jumlah = _jumlahPeriode;
-    final hasil = <_Periode>[];
-    for (var i = jumlah - 1; i >= 0; i--) {
-      final date = _tahunan ? DateTime(now.year - i) : DateTime(now.year, now.month - i);
-      final key = _tahunan
-          ? '${date.year}'
-          : '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      final total = riwayat.where((d) => (d['tanggal'] as String).startsWith(key)).fold<double>(0, (sum, d) => sum + (d['total'] as double));
-      final transaksi = riwayat.where((d) => (d['tanggal'] as String).startsWith(key)).fold<int>(0, (sum, d) => sum + (d['transaksi'] as int));
-      hasil.add(_Periode(
-        _tahunan ? '${date.year}' : '${_namaBulan[date.month - 1]} ${date.year}',
-        date,
-        total,
-        transaksi,
-      ));
-    }
-    return hasil;
+  List<_Hari> _tujuhHariTerakhir(KasirProvider p, DateTime now) {
+    final awalHariIni = DateTime(now.year, now.month, now.day);
+    return List.generate(7, (i) {
+      final tanggal = awalHariIni.subtract(Duration(days: 6 - i));
+      final key = '${tanggal.year}-${tanggal.month.toString().padLeft(2, '0')}-${tanggal.day.toString().padLeft(2, '0')}';
+      final data = p.riwayatPendapatan.cast<Map<String, dynamic>>().where((d) => d['tanggal'] == key).toList();
+      return _Hari(tanggal, data.fold(0, (sum, d) => sum + (d['transaksi'] as int)), data.fold(0.0, (sum, d) => sum + (d['total'] as double)));
+    });
   }
-
-  static const _namaBulan = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
-  ];
 }
 
-class _Periode {
-  final String label;
-  final DateTime date;
-  final double total;
+class _Hari {
+  final DateTime tanggal;
   final int transaksi;
-  const _Periode(this.label, this.date, this.total, this.transaksi);
+  final double total;
+  const _Hari(this.tanggal, this.transaksi, this.total);
 }
 
 class _HariIniCard extends StatelessWidget {
-  final double total; final int transaksi; final String Function(double) format;
+  final double total;
+  final int transaksi;
+  final String Function(double) format;
   const _HariIniCard({required this.total, required this.transaksi, required this.format});
-  @override Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(18)),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Row(children: [Icon(Icons.today_outlined, color: Colors.white70), SizedBox(width: 8), Text('HASIL HARI INI', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold))]),
-      const SizedBox(height: 10), Text(format(total), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 4), Text('$transaksi transaksi berhasil', style: const TextStyle(color: Colors.white70)),
-    ]),
-  );
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(18)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Row(children: [Icon(Icons.today_outlined, color: Colors.white70), SizedBox(width: 8), Text('PENJUALAN HARI INI', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold))]),
+          const SizedBox(height: 10),
+          Text(format(total), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('$transaksi transaksi berhasil', style: const TextStyle(color: Colors.white70)),
+        ]),
+      );
 }
 
-class _TrendCard extends StatelessWidget {
-  final String label; final double total; final int transaksi; final double selisih; final double? persen; final String? pembanding; final String Function(double) format;
-  const _TrendCard({required this.label, required this.total, required this.transaksi, required this.selisih, required this.persen, required this.pembanding, required this.format});
-  @override Widget build(BuildContext context) {
-    final naik = selisih >= 0;
-    final color = naik ? Colors.green : Colors.red;
-    final teks = pembanding == null ? 'Belum ada periode sebelumnya untuk dibandingkan' : '${naik ? 'Naik' : 'Turun'} ${format(selisih.abs())}${persen == null ? '' : ' (${persen!.abs().toStringAsFixed(1)}%)'} dari $pembanding';
-    return Card(elevation: 0, color: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)), child: Padding(
-      padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: TextStyle(color: Colors.grey.shade600)), const SizedBox(height: 5), Text(format(total), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10), Row(children: [Icon(naik ? Icons.trending_up : Icons.trending_down, color: color), const SizedBox(width: 6), Expanded(child: Text(teks, style: TextStyle(color: pembanding == null ? Colors.grey.shade600 : color, fontWeight: FontWeight.w600, fontSize: 12)))]),
-        const SizedBox(height: 6), Text('$transaksi transaksi', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+class _BarangHariIni extends StatelessWidget {
+  final List<Map<String, dynamic>> barang;
+  final String Function(double) format;
+  const _BarangHariIni({required this.barang, required this.format});
+
+  @override
+  Widget build(BuildContext context) {
+    if (barang.isEmpty) return _kotakPesan(Icons.shopping_bag_outlined, 'Belum ada barang terjual hari ini');
+    final urut = [...barang]..sort((a, b) => ((b['total'] as num?) ?? 0).compareTo((a['total'] as num?) ?? 0));
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      child: Column(children: [
+        for (var i = 0; i < urut.length; i++) ...[
+          if (i > 0) Divider(height: 1, color: Colors.grey.shade100),
+          ListTile(
+            leading: CircleAvatar(backgroundColor: Colors.red.shade50, child: Icon(Icons.shopping_bag_outlined, color: Colors.red.shade700, size: 20)),
+            title: Text(urut[i]['nama'] as String? ?? '-', style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text('${_angka(urut[i]['jumlah'])} ${urut[i]['satuan'] ?? 'pcs'}'),
+            trailing: Text(format((urut[i]['total'] as num?)?.toDouble() ?? 0), style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ]),
-    ));
+    );
+  }
+
+  String _angka(dynamic angka) {
+    final nilai = (angka as num?)?.toDouble() ?? 0;
+    return nilai % 1 == 0 ? nilai.toInt().toString() : nilai.toStringAsFixed(2);
   }
 }
 
-class _PeriodTile extends StatelessWidget {
-  final _Periode item; final double maxTotal; final String Function(double) format;
-  const _PeriodTile({required this.item, required this.maxTotal, required this.format});
-  @override Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-    child: Column(children: [Row(children: [Expanded(child: Text(item.label, style: const TextStyle(fontWeight: FontWeight.w600))), Text(format(item.total), style: const TextStyle(fontWeight: FontWeight.bold))]), const SizedBox(height: 9), ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: maxTotal == 0 ? 0 : item.total / maxTotal, minHeight: 7, backgroundColor: Colors.red.shade50, color: Colors.red)), const SizedBox(height: 6), Align(alignment: Alignment.centerLeft, child: Text('${item.transaksi} transaksi', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)))],),
-  );
+class _StatusRamai extends StatelessWidget {
+  final int transaksi, kemarin;
+  final double rataRata;
+  final bool ramai, naik;
+  const _StatusRamai({required this.transaksi, required this.kemarin, required this.rataRata, required this.ramai, required this.naik});
+
+  @override
+  Widget build(BuildContext context) {
+    final warna = ramai ? Colors.green : Colors.orange.shade800;
+    final label = transaksi == 0 ? 'Belum ada transaksi' : ramai ? 'Toko sedang ramai' : 'Toko cenderung sepi';
+    final beda = transaksi - kemarin;
+    final tren = beda == 0 ? 'Sama dengan kemarin' : '${naik ? 'Naik' : 'Turun'} ${beda.abs()} transaksi dari kemarin';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: warna.withValues(alpha: .10), borderRadius: BorderRadius.circular(16)),
+      child: Row(children: [
+        Icon(naik ? Icons.trending_up : Icons.trending_down, color: warna, size: 32),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: warna, fontSize: 16)),
+          const SizedBox(height: 3),
+          Text('$tren. Rata-rata 6 hari terakhir: ${rataRata.toStringAsFixed(1)} transaksi.', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+        ])),
+      ]),
+    );
+  }
 }
 
-class _EmptyReport extends StatelessWidget {
-  final bool tahunan; const _EmptyReport({required this.tahunan});
-  @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: Column(children: [Icon(Icons.receipt_long_outlined, size: 38, color: Colors.grey.shade400), const SizedBox(height: 8), Text('Belum ada penjualan pada periode ini', style: TextStyle(color: Colors.grey.shade600)), const SizedBox(height: 4), Text('Data akan muncul setelah transaksi diproses.', style: TextStyle(fontSize: 12, color: Colors.grey.shade500))]));
+class _GrafikTransaksi extends StatelessWidget {
+  final List<_Hari> data;
+  const _GrafikTransaksi({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.every((d) => d.transaksi == 0)) return _kotakPesan(Icons.show_chart, 'Belum ada data transaksi untuk grafik');
+    final max = data.map((d) => d.transaksi).reduce((a, b) => a > b ? a : b);
+    const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    return Container(
+      height: 220,
+      padding: const EdgeInsets.fromLTRB(12, 18, 12, 10),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      child: Column(children: [
+        Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          for (final h in data)
+            Expanded(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                Text('${h.transaksi}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Flexible(child: FractionallySizedBox(
+                  heightFactor: h.transaksi / max,
+                  alignment: Alignment.bottomCenter,
+                  child: Container(decoration: BoxDecoration(color: h == data.last ? Colors.red : Colors.red.shade200, borderRadius: const BorderRadius.vertical(top: Radius.circular(6)))),
+                )),
+              ]),
+            )),
+        ])),
+        const SizedBox(height: 8),
+        Row(children: [for (final h in data) Expanded(child: Center(child: Text(namaHari[h.tanggal.weekday - 1], style: const TextStyle(fontSize: 10))))]),
+      ]),
+    );
+  }
 }
+
+Widget _kotakPesan(IconData icon, String pesan) => Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      child: Column(children: [Icon(icon, size: 36, color: Colors.grey.shade400), const SizedBox(height: 8), Text(pesan, style: TextStyle(color: Colors.grey.shade600))]),
+    );

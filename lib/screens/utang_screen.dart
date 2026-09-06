@@ -143,8 +143,6 @@ class _UtangScreenState extends State<UtangScreen> {
                           builder: (_) => UtangDetailScreen(utangId: u.id),
                         ),
                       ),
-                      onLunas:
-                          u.lunas ? null : () => _tandaiLunas(context, p, u),
                     )),
             ],
           ),
@@ -166,44 +164,18 @@ class _UtangScreenState extends State<UtangScreen> {
     }
   }
 
-  Future<void> _tandaiLunas(
-      BuildContext context, KasirProvider p, UtangModel u) async {
-    try {
-      await p.setUtangLunas(u.id, true);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Utang ${u.nama} ditandai lunas'),
-        backgroundColor: AppColors.success,
-      ));
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Gagal menyimpan: $e'),
-        backgroundColor: AppColors.red,
-      ));
-    }
-  }
 }
 
 class _UtangCard extends StatelessWidget {
   final UtangModel utang;
   final KasirProvider provider;
   final VoidCallback onTap;
-  final VoidCallback? onLunas;
 
   const _UtangCard({
     required this.utang,
     required this.provider,
     required this.onTap,
-    required this.onLunas,
   });
-
-  String get _ringkasBarang {
-    if (utang.barang.isEmpty) return '-';
-    final pertama = utang.barang.first.nama;
-    if (utang.barang.length == 1) return pertama;
-    return '$pertama +${utang.barang.length - 1} lainnya';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -263,56 +235,17 @@ class _UtangCard extends StatelessWidget {
                         fontSize: 12, color: AppColors.textMuted)),
               ],
             ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(Icons.shopping_bag_outlined,
-                    size: 13, color: AppColors.textMuted),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    _ringkasBarang,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.inkSoft),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 10),
+            Text(
+              u.lunas
+                  ? 'Total: ${provider.formatHarga(u.total)}'
+                  : 'Sisa: ${provider.formatHarga(u.sisa)} dari ${provider.formatHarga(u.total)}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: u.lunas ? AppColors.textMuted : AppColors.red,
+              ),
             ),
-            if (u.adaHarga) ...[
-              const SizedBox(height: 8),
-              Text(
-                provider.formatHarga(u.total),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: u.lunas ? AppColors.textMuted : AppColors.red,
-                ),
-              ),
-            ],
-            if (onLunas != null) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: OutlinedButton.icon(
-                  onPressed: onLunas,
-                  icon: const Icon(Icons.check_circle_outline, size: 16),
-                  label: const Text('Lunas'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.success,
-                    side: BorderSide(
-                        color: AppColors.success.withValues(alpha: .5)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 4),
-                    minimumSize: const Size(0, 34),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),
