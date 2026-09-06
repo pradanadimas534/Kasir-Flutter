@@ -18,14 +18,24 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Tinggi bilah navigasi sistem (tombol/pil). Nilainya berubah saat
+    // sistem menyembunyikan/menampilkan bilahnya, dan MediaQuery ikut
+    // rebuild — jadi nav aplikasi otomatis turun saat bilah sistem
+    // ngumpet, dan naik lagi saat bilah sistem muncul. Warna merah tetap
+    // mengisi sampai dasar layar, hanya area tombol yang bergeser supaya
+    // tidak bentrok dengan tombol sistem.
+    final sysNav = MediaQuery.viewPaddingOf(context).bottom;
+
     return BottomAppBar(
       color: AppColors.red,
       shape: const CircularNotchedRectangle(),
       notchMargin: 8,
       elevation: 12,
       padding: EdgeInsets.zero,
-      child: SafeArea(
-        top: false,
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: sysNav),
         child: SizedBox(
           height: 56,
           child: Row(
@@ -63,6 +73,7 @@ class AppBottomNav extends StatelessWidget {
     );
   }
 }
+
 
 class _NavIcon extends StatelessWidget {
   final IconData icon;
