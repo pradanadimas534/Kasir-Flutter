@@ -128,12 +128,17 @@ class _KasirScreenState extends State<KasirScreen> {
                             'Tambahkan produk lewat menu Stok\nuntuk mulai berjualan',
                       )
                     : GridView.builder(
+                        padding: const EdgeInsets.only(bottom: 8),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount:    2,
                           crossAxisSpacing:  10,
                           mainAxisSpacing:   10,
-                          childAspectRatio:  1.5,
+                          // Tinggi tetap per kartu supaya isi (nama 2 baris +
+                          // harga + stok) tidak pernah overflow, apa pun lebar
+                          // layar. Sebelumnya pakai childAspectRatio yang
+                          // ikut mengecil di layar sempit.
+                          mainAxisExtent: 138,
                         ),
                         itemCount: filtered.length,
                         itemBuilder: (_, i) =>
