@@ -31,9 +31,12 @@ class KasirProvider extends ChangeNotifier {
   final _firestore = FirestoreService();
 
   // ── STATE ────────────────────────────────────────────────────────
-  List<ItemModel> items    = [];
+  List<ItemModel> items      = []; // barang aktif (tidak di sampah)
+  List<ItemModel> trashItems = []; // barang di "Sampah"
   List<CartItem>  cart     = [];
   List<UtangModel> utangList = [];
+
+  static const int umurSampahHari = 30;
 
   bool   isLoading  = true;
   bool   isLoggedIn = false;
@@ -132,10 +135,11 @@ class KasirProvider extends ChangeNotifier {
 
     // 2. Muat barang langsung dari Firestore
     try {
-      items = await _firestore.getItems(uid);
+      await _muatBarang();
       status = '';
     } catch (_) {
       items = [];
+      trashItems = [];
       status = 'Gagal memuat data barang';
     }
 
@@ -153,9 +157,40 @@ class KasirProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Muat & pilah barang aktif vs sampah + bersihkan yang kedaluwarsa ──
+  Future<void> _muatBarang() async {
+    final semua = await _firestore.getItems(uid);
+
+    // Auto-hapus permanen barang yang di sampah lebih dari 30 hari.
+    final batas =
+        DateTime.now().subtract(const Duration(days: umurSampahHari));
+    for (final b in semua
+        .where((i) => i.deletedAt != null && i.deletedAt!.isBefore(batas))
+        .toList()) {
+      try {
+        await _firestore.deleteItem(uid, b.id);
+      } catch (_) {}
+      semua.remove(b);
+    }
+
+    items = semua.where((i) => i.deletedAt == null).toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+    trashItems = semua.where((i) => i.deletedAt != null).toList()
+      ..sort((a, b) => b.deletedAt!.compareTo(a.deletedAt!));
+  }
+
+  /// Sisa hari sebelum barang di sampah dihapus permanen.
+  int sisaHariSampah(ItemModel item) {
+    if (item.deletedAt == null) return umurSampahHari;
+    final sisa =
+        umurSampahHari - DateTime.now().difference(item.deletedAt!).inDays;
+    return sisa < 0 ? 0 : sisa;
+  }
+
   // ── Proses setelah logout ────────────────────────────────────────
   Future<void> _onLogout() async {
     items             = [];
+    trashItems        = [];
     cart              = [];
     utangList         = [];
     isLoggedIn        = false;
@@ -361,7 +396,8 @@ class KasirProvider extends ChangeNotifier {
     );
 
     try {
-      items = await _firestore.addItem(uid, newItem);
+      await _firestore.addItem(uid, newItem);
+      await _muatBarang();
       notifyListeners();
     } catch (e, st) {
       debugPrint('Gagal menambah barang: $e\n$st');
@@ -371,10 +407,45 @@ class KasirProvider extends ChangeNotifier {
     }
   }
 
+  /// Pindahkan barang ke "Sampah" (soft delete). Bisa dipulihkan dalam 30 hari.
   Future<void> hapusItem(int id) async {
+    final idx = items.indexWhere((i) => i.id == id);
+    if (idx == -1) return;
     cart.removeWhere((c) => c.id == id);
+    final dibuang = items[idx].copyWith(deletedAt: DateTime.now());
+    await _firestore.updateItem(uid, dibuang);
+    items.removeAt(idx);
+    trashItems.insert(0, dibuang);
+    notifyListeners();
+  }
+
+  /// Kembalikan barang dari "Sampah" ke daftar aktif.
+  Future<void> pulihkanItem(int id) async {
+    final idx = trashItems.indexWhere((i) => i.id == id);
+    if (idx == -1) return;
+    final pulih = trashItems[idx].copyWith(clearDeletedAt: true);
+    await _firestore.updateItem(uid, pulih);
+    trashItems.removeAt(idx);
+    items.add(pulih);
+    items.sort((a, b) => a.id.compareTo(b.id));
+    notifyListeners();
+  }
+
+  /// Hapus permanen satu barang di "Sampah".
+  Future<void> hapusPermanenItem(int id) async {
     await _firestore.deleteItem(uid, id);
-    items = await _firestore.getItems(uid);
+    trashItems.removeWhere((i) => i.id == id);
+    notifyListeners();
+  }
+
+  /// Kosongkan seluruh "Sampah" (hapus permanen semuanya).
+  Future<void> kosongkanSampah() async {
+    for (final id in trashItems.map((i) => i.id).toList()) {
+      try {
+        await _firestore.deleteItem(uid, id);
+      } catch (_) {}
+    }
+    trashItems.clear();
     notifyListeners();
   }
 

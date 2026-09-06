@@ -8,6 +8,10 @@ class ItemModel {
   final String unit; // 'pcs' | 'gram' | 'ons' | 'kg'
   final String barcode;
 
+  /// Kalau tidak null: barang ada di "Sampah" sejak tanggal ini.
+  /// Dihapus permanen otomatis setelah 30 hari.
+  final DateTime? deletedAt;
+
   ItemModel({
     required this.id,
     required this.name,
@@ -17,7 +21,10 @@ class ItemModel {
     required this.type,
     required this.unit,
     this.barcode = '',
+    this.deletedAt,
   });
+
+  bool get diSampah => deletedAt != null;
 
   ItemModel copyWith({
     int? id,
@@ -28,6 +35,8 @@ class ItemModel {
     String? type,
     String? unit,
     String? barcode,
+    DateTime? deletedAt,
+    bool clearDeletedAt = false,
   }) =>
       ItemModel(
         id:    id    ?? this.id,
@@ -38,6 +47,7 @@ class ItemModel {
         type:  type  ?? this.type,
         unit:  unit  ?? this.unit,
         barcode: barcode ?? this.barcode,
+        deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
       );
 
   // ── XML ──────────────────────────────────────────────────────────
@@ -50,6 +60,7 @@ class ItemModel {
     'type':  type,
     'unit':  unit,
     'barcode': barcode,
+    'deletedAt': deletedAt?.toIso8601String() ?? '',
   };
 
   factory ItemModel.fromXmlMap(Map<String, String> m) => ItemModel(
@@ -61,5 +72,8 @@ class ItemModel {
     type:  m['type']  ?? 'satuan',
     unit:  m['unit']  ?? 'pcs',
     barcode: m['barcode'] ?? '',
+    deletedAt: (m['deletedAt'] ?? '').isEmpty
+        ? null
+        : DateTime.tryParse(m['deletedAt']!),
   );
 }

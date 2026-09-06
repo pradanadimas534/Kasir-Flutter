@@ -31,6 +31,9 @@ class FirestoreService {
         type: data['type'] as String? ?? 'satuan',
         unit: data['unit'] as String? ?? 'pcs',
         barcode: data['barcode'] as String? ?? '',
+        deletedAt: (data['deletedAt'] as String?) == null
+            ? null
+            : DateTime.tryParse(data['deletedAt'] as String),
       );
     }).toList();
     items.sort((a, b) => a.id.compareTo(b.id));
@@ -114,6 +117,7 @@ class FirestoreService {
         'type': item.type,
         'unit': item.unit,
         'barcode': item.barcode,
+        'deletedAt': item.deletedAt?.toIso8601String(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
 

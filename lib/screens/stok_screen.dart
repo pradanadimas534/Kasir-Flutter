@@ -6,6 +6,7 @@ import '../providers/kasir_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_ui.dart';
 import 'barcode_scanner_screen.dart';
+import 'sampah_screen.dart';
 
 class StokScreen extends StatefulWidget {
   const StokScreen({super.key});
@@ -17,6 +18,7 @@ class StokScreen extends StatefulWidget {
 class _StokScreenState extends State<StokScreen> {
   final _searchCtrl = TextEditingController();
   bool  _showForm   = false;
+  String _jenisFilter = 'all'; // 'all' | 'satuan' | 'timbang'
 
   // Form tambah barang
   final _nameCtrl  = TextEditingController();
@@ -53,9 +55,10 @@ class _StokScreenState extends State<StokScreen> {
     final p = context.watch<KasirProvider>();
 
     final filtered = p.items.where((item) {
-      return _searchCtrl.text.isEmpty ||
-          item.name.toLowerCase().contains(
-              _searchCtrl.text.toLowerCase());
+      final cocokCari = _searchCtrl.text.isEmpty ||
+          item.name.toLowerCase().contains(_searchCtrl.text.toLowerCase());
+      final cocokJenis = _jenisFilter == 'all' || item.type == _jenisFilter;
+      return cocokCari && cocokJenis;
     }).toList();
 
     return SingleChildScrollView(
@@ -80,6 +83,20 @@ class _StokScreenState extends State<StokScreen> {
                   fontWeight: FontWeight.w700,
                   fontSize: 20,
                   color: AppColors.ink,
+                ),
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed: () => setState(() => _showForm = !_showForm),
+                icon: Icon(_showForm ? Icons.close : Icons.add, size: 20),
+                label: Text(_showForm ? 'Tutup' : 'Tambah'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.red,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
               ),
             ],
@@ -113,7 +130,7 @@ class _StokScreenState extends State<StokScreen> {
           ),
           const SizedBox(height: 14),
 
-          // ── Search + Tombol Tambah ─────────────────────────────
+          // ── Search + Filter + Sampah ──────────────────────────
           Row(
             children: [
               Expanded(
@@ -123,18 +140,19 @@ class _StokScreenState extends State<StokScreen> {
                   onChanged: (_) => setState(() {}),
                 ),
               ),
-              const SizedBox(width: 10),
-              FilledButton.icon(
-                onPressed: () => setState(() => _showForm = !_showForm),
-                icon: Icon(_showForm ? Icons.close : Icons.add),
-                label: Text(_showForm ? 'Tutup' : 'Tambah'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.red,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+              const SizedBox(width: 8),
+              _SquareIconBtn(
+                icon: Icons.filter_list_rounded,
+                active: _jenisFilter != 'all',
+                onTap: _pilihJenis,
+              ),
+              const SizedBox(width: 8),
+              _SquareIconBtn(
+                icon: Icons.delete_outline_rounded,
+                badge: p.trashItems.isEmpty ? null : '${p.trashItems.length}',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SampahScreen()),
                 ),
               ),
             ],
@@ -384,7 +402,8 @@ class _StokScreenState extends State<StokScreen> {
                     builder: (_) => AlertDialog(
                       title: const Text('Hapus Barang'),
                       content: Text(
-                          'Hapus "${item.name}" dari daftar?'),
+                          'Pindahkan "${item.name}" ke Sampah? '
+                          'Bisa dipulihkan dalam 30 hari.'),
                       actions: [
                         TextButton(
                           onPressed: () =>
@@ -401,12 +420,70 @@ class _StokScreenState extends State<StokScreen> {
                       ],
                     ),
                   );
-                  if (ok == true) await p.hapusItem(item.id);
+                  if (ok != true || !context.mounted) return;
+                  await p.hapusItem(item.id);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('${item.name} dipindahkan ke Sampah'),
+                    action: SnackBarAction(
+                      label: 'Urungkan',
+                      onPressed: () => p.pulihkanItem(item.id),
+                    ),
+                  ));
                 },
               )),
         ],
       ),
     );
+  }
+
+  Future<void> _pilihJenis() async {
+    final opsi = {
+      'all': 'Semua jenis',
+      'satuan': '📦 Satuan',
+      'timbang': '⚖️ Timbang',
+    };
+    final pilih = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 14, 20, 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Filter jenis barang',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
+            ),
+            for (final e in opsi.entries)
+              ListTile(
+                title: Text(e.value),
+                trailing: _jenisFilter == e.key
+                    ? const Icon(Icons.check_rounded, color: AppColors.red)
+                    : null,
+                onTap: () => Navigator.pop(ctx, e.key),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (pilih != null) setState(() => _jenisFilter = pilih);
   }
 
   Future<void> _showTambahStokDialog(ItemModel item) async {
@@ -891,6 +968,72 @@ class _ItemCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Tombol ikon kotak (filter / sampah) ─────────────────────────
+class _SquareIconBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool active;
+  final String? badge;
+
+  const _SquareIconBtn({
+    required this.icon,
+    required this.onTap,
+    this.active = false,
+    this.badge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: active ? AppColors.red : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          elevation: 0,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: AppColors.softShadow,
+              ),
+              child: Icon(icon,
+                  color: active ? Colors.white : AppColors.inkSoft, size: 22),
+            ),
+          ),
+        ),
+        if (badge != null)
+          Positioned(
+            right: -4,
+            top: -4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              constraints: const BoxConstraints(minWidth: 16),
+              decoration: BoxDecoration(
+                color: AppColors.red,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: Text(
+                badge!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
