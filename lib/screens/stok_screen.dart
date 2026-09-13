@@ -76,16 +76,19 @@ class _StokScreenState extends State<StokScreen> {
                     color: AppColors.red, size: 28),
               ),
               const SizedBox(width: 4),
-              const Text(
-                'Stok Barang',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 20,
-                  color: AppColors.ink,
+              const Expanded(
+                child: Text(
+                  'Stok Barang',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    color: AppColors.ink,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
-              const Spacer(),
               FilledButton.icon(
                 onPressed: () => setState(() => _showForm = !_showForm),
                 icon: Icon(_showForm ? Icons.close : Icons.add, size: 20),
