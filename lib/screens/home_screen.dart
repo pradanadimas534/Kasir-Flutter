@@ -46,8 +46,12 @@ class _HomeScreenState extends State<HomeScreen> {
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
-        systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarContrastEnforced: false,
+        // Warna solid, bukan transparent: sebagian Android lama/ROM
+        // custom (mis. ColorOS di HP lama) tidak mendukung nav bar
+        // transparan dengan baik dan malah menimpakan bilah putih buram
+        // di atas konten paling bawah layar. Merah cocok karena bottom
+        // nav (AppBottomNav) di layar ini memang berwarna merah.
+        systemNavigationBarColor: AppColors.red,
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(

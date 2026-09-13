@@ -34,8 +34,11 @@ class _LoginScreenState extends State<LoginScreen> {
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarContrastEnforced: false,
+        // Warna solid, bukan transparent: sebagian Android lama/ROM
+        // custom (mis. ColorOS di HP lama) tidak mendukung nav bar
+        // transparan dengan baik, dan malah menimpakan bilah putih
+        // buram di atas konten paling bawah (tombol login jadi ketutup).
+        systemNavigationBarColor: AppColors.redDeep,
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
@@ -44,79 +47,101 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Stack(
           children: [
             SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 40),
-                    const Text(
-                      'Kasir Toko',
-                      style: TextStyle(
-                        fontFamily: 'Lobster',
-                        fontSize: 50,
-                        color: Colors.white,
-                        height: 1.1,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Bungkus dengan scroll view + tinggi minimum viewport,
+                  // supaya di layar/device lama yang ruangnya lebih sempit
+                  // (font sistem lebih besar, atau bilah navigasi sistem
+                  // makan lebih banyak tempat) konten bisa discroll alih-
+                  // alih ke-overflow dan kepotong diam-diam saat rilis.
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 40),
+                            const Text(
+                              'Kasir Toko',
+                              style: TextStyle(
+                                fontFamily: 'Lobster',
+                                fontSize: 50,
+                                color: Colors.white,
+                                height: 1.1,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Kasir & Operasional',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 18,
+                                color: Colors.white.withValues(alpha: .92),
+                              ),
+                            ),
+                            const Spacer(flex: 3),
+                            Image.asset(
+                              'assets/images/basket.png',
+                              width: 220,
+                              fit: BoxFit.contain,
+                              // Aset aslinya 1052x880px (~1MB) tapi cuma
+                              // ditampilkan selebar 220dp — decode di
+                              // ukuran tampil supaya tidak boros memori
+                              // di HP RAM kecil (mis. Oppo A5s 2-3GB).
+                              cacheWidth:
+                                  (220 * MediaQuery.devicePixelRatioOf(context))
+                                      .round(),
+                            ),
+                            const Spacer(flex: 3),
+                            const Text(
+                              'Selamat datang!',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 28,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Login untuk melanjutkan ke aplikasi kasir',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 15,
+                                color: Colors.white.withValues(alpha: .92),
+                              ),
+                            ),
+                            const SizedBox(height: 26),
+                            _GoogleButton(onPressed: _loading ? null : _login),
+                            const Spacer(flex: 3),
+                            Text(
+                              'Dengan login, Anda setuju dengan',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: .9),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Syarat & Ketentuan dan Kebijakan Privasi',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Kasir & Operasional',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 18,
-                        color: Colors.white.withValues(alpha: .92),
-                      ),
-                    ),
-                    const Spacer(flex: 3),
-                    Image.asset(
-                      'assets/images/basket.png',
-                      width: 220,
-                      fit: BoxFit.contain,
-                    ),
-                    const Spacer(flex: 3),
-                    const Text(
-                      'Selamat datang!',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 28,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Login untuk melanjutkan ke aplikasi kasir',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                        color: Colors.white.withValues(alpha: .92),
-                      ),
-                    ),
-                    const SizedBox(height: 26),
-                    _GoogleButton(onPressed: _loading ? null : _login),
-                    const Spacer(flex: 3),
-                    Text(
-                      'Dengan login, Anda setuju dengan',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        color: Colors.white.withValues(alpha: .9),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Syarat & Ketentuan dan Kebijakan Privasi',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
 

@@ -17,13 +17,15 @@ void main() async {
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // Edge-to-edge: aplikasi menggambar di belakang status bar & tombol
-  // navigasi sistem, sehingga nav bar aplikasi menempel ke dasar layar
-  // dan bilah/pil gestur sistem jadi transparan menumpang di atasnya.
+  // navigasi sistem. Nav bar-nya sendiri diberi warna solid (bukan
+  // transparent) karena beberapa Android lama/ROM custom (mis. ColorOS
+  // di HP lama) tidak mendukung nav bar transparan dengan baik — malah
+  // menimpakan bilah putih buram di atas konten paling bawah layar.
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarContrastEnforced: false,
+    systemNavigationBarColor: AppColors.redDeep,
+    systemNavigationBarIconBrightness: Brightness.light,
   ));
 
   // Inisialisasi Firebase
