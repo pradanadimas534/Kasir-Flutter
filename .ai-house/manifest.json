@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tool": "ai-software-house-rules-engine",
+  "installedVersion": "0.1.1",
+  "installedAt": "2026-10-10T02:25:25.243Z",
+  "source": "C:\\Program Codding\\ai-software-house-rules-engine-v0.1.1\\ai-software-house-rules-engine",
+  "skills": [
+    "planning",
+    "software-house",
+    "testing",
+    "code-review"
+  ],
+  "adapter": "none",
+  "managedFiles": {
+    "AGENTS.md": "4c8e370e7c8841effc4e17256c2d02b2b6b49a9d28d78a13da7e279d54ebd3e9",
+    ".ai-house/skills/planning/SKILL.md": "25cc6bd61f3a15d0103accad6dbb5cca32de0d8b781b43f9e3d557e83d09ee93",
+    ".ai-house/skills/software-house/SKILL.md": "402de9852143af48885ace1e2e1571f4148a8e1c08af2021b545fefe9ae6c3c6",
+    ".ai-house/skills/testing/SKILL.md": "6838a14b6607f55ea03f977160ab2fb47bf56034ed737254bb85b7fe1247b267",
+    ".ai-house/skills/code-review/SKILL.md": "713dd341bf2a2a0536824f1231bf383464559027014ff7e1620b64abf567303b"
+  },
+  "updatedAt": "2026-10-10T02:44:39.624Z"
+}

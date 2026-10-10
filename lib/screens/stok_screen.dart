@@ -107,29 +107,49 @@ class _StokScreenState extends State<StokScreen> {
           const SizedBox(height: 10),
 
           // ── Summary Cards ──────────────────────────────────────
-          Row(
-            children: [
-              _SumCard(
-                label: 'Total Barang',
-                value: '${p.totalBarang}',
-                color: Colors.blue,
-                icon:  Icons.inventory_2_outlined,
-              ),
-              const SizedBox(width: 8),
-              _SumCard(
-                label: 'Menipis',
-                value: '${p.stokMenipis}',
-                color: Colors.orange,
-                icon:  Icons.warning_amber_rounded,
-              ),
-              const SizedBox(width: 8),
-              _SumCard(
-                label: 'Habis',
-                value: '${p.stokHabis}',
-                color: Colors.red,
-                icon:  Icons.remove_shopping_cart_outlined,
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cards = [
+                _SumCard(
+                  label: 'Total Barang',
+                  value: '${p.totalBarang}',
+                  color: Colors.blue,
+                  icon: Icons.inventory_2_outlined,
+                ),
+                _SumCard(
+                  label: 'Menipis',
+                  value: '${p.stokMenipis}',
+                  color: Colors.orange,
+                  icon: Icons.warning_amber_rounded,
+                ),
+                _SumCard(
+                  label: 'Habis',
+                  value: '${p.stokHabis}',
+                  color: Colors.red,
+                  icon: Icons.remove_shopping_cart_outlined,
+                ),
+              ];
+
+              if (constraints.maxWidth < 360) {
+                final cardWidth = (constraints.maxWidth - 8) / 2;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: cards
+                      .map((card) => SizedBox(width: cardWidth, child: card))
+                      .toList(),
+                );
+              }
+
+              return Row(
+                children: [
+                  for (var i = 0; i < cards.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Expanded(child: cards[i]),
+                  ],
+                ],
+              );
+            },
           ),
           const SizedBox(height: 14),
 
@@ -231,69 +251,70 @@ class _StokScreenState extends State<StokScreen> {
                     const SizedBox(height: 8),
                   ],
 
-                  Row(
-                    children: [
-                      // Input harga
-                      Expanded(
-                        child: _formField(
-                          ctrl:      _priceCtrl,
-                          label:     _newType == 'satuan'
-                              ? 'Harga/pcs (Rp)'
-                              : 'Harga/$_newUnit (Rp)',
-                          hint:      '0',
-                          inputType: TextInputType.number,
-                          formatter: FilteringTextInputFormatter
-                              .digitsOnly,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-
-                      // Satuan (timbang only)
-                      if (_newType == 'timbang')
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _newUnit,
-                            decoration: InputDecoration(
-                              labelText: 'Satuan',
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
-                              border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                  value: 'gram',
-                                  child: Text('per gram')),
-                              DropdownMenuItem(
-                                  value: 'ons',
-                                  child: Text('per ons')),
-                              DropdownMenuItem(
-                                  value: 'kg',
-                                  child: Text('per kg')),
-                            ],
-                            onChanged: (v) =>
-                                setState(() => _newUnit = v!),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final narrow = constraints.maxWidth < 360;
+                      final fieldWidth = narrow
+                          ? constraints.maxWidth
+                          : (constraints.maxWidth - 8) / 2;
+                      final fields = <Widget>[
+                        SizedBox(
+                          width: fieldWidth,
+                          child: _formField(
+                            ctrl: _priceCtrl,
+                            label: _newType == 'satuan'
+                                ? 'Harga/pcs (Rp)'
+                                : 'Harga/$_newUnit (Rp)',
+                            hint: '0',
+                            inputType: TextInputType.number,
+                            formatter: FilteringTextInputFormatter.digitsOnly,
                           ),
                         ),
-
-                      // Stok awal
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _formField(
-                          ctrl:      _stockCtrl,
-                          label:     'Stok Awal',
-                          hint:      '0',
-                          inputType:
-                              const TextInputType.numberWithOptions(
-                                  decimal: true),
-                          formatter: FilteringTextInputFormatter
-                              .allow(RegExp(r'[0-9.]')),
+                        if (_newType == 'timbang')
+                          SizedBox(
+                            width: fieldWidth,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _newUnit,
+                              decoration: InputDecoration(
+                                labelText: 'Satuan',
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                    value: 'gram', child: Text('per gram')),
+                                DropdownMenuItem(
+                                    value: 'ons', child: Text('per ons')),
+                                DropdownMenuItem(
+                                    value: 'kg', child: Text('per kg')),
+                              ],
+                              onChanged: (v) => setState(() => _newUnit = v!),
+                            ),
+                          ),
+                        SizedBox(
+                          width: fieldWidth,
+                          child: _formField(
+                            ctrl: _stockCtrl,
+                            label: 'Stok Awal',
+                            hint: '0',
+                            inputType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            formatter: FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]')),
+                          ),
                         ),
-                      ),
-                    ],
+                      ];
+
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: fields,
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
 
@@ -843,26 +864,34 @@ class _ItemCard extends StatelessWidget {
           // ── Info stok & harga / Edit form ──────────────────
           const SizedBox(height: 8),
           if (!editing)
-            Row(
-              children: [
-                _infoBox(
-                  'Stok',
-                  p.formatStock(item),
-                  Colors.blue,
-                ),
-                const SizedBox(width: 8),
-                _infoBox(
-                  'Harga',
-                  '${p.formatHarga(item.price)}/${item.unit}',
-                  Colors.green,
-                ),
-                const SizedBox(width: 8),
-                _infoBox(
-                  'Terjual',
-                  '${item.sold.toInt()} ${item.unit}',
-                  Colors.purple,
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final boxes = [
+                  _infoBox('Stok', p.formatStock(item), Colors.blue),
+                  _infoBox('Harga',
+                      '${p.formatHarga(item.price)}/${item.unit}', Colors.green),
+                  _infoBox('Terjual', '${item.sold.toInt()} ${item.unit}',
+                      Colors.purple),
+                ];
+                if (constraints.maxWidth < 360) {
+                  final boxWidth = (constraints.maxWidth - 8) / 2;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: boxes
+                        .map((box) => SizedBox(width: boxWidth, child: box))
+                        .toList(),
+                  );
+                }
+                return Row(
+                  children: [
+                    for (var i = 0; i < boxes.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 8),
+                      Expanded(child: boxes[i]),
+                    ],
+                  ],
+                );
+              },
             )
           else
             Column(
@@ -940,8 +969,7 @@ class _ItemCard extends StatelessWidget {
   }
 
   Widget _infoBox(String label, String value, Color color) {
-    return Expanded(
-      child: Container(
+    return Container(
         padding: const EdgeInsets.symmetric(
             horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
@@ -970,7 +998,6 @@ class _ItemCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -1057,8 +1084,7 @@ class _SumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: .08),
@@ -1088,7 +1114,6 @@ class _SumCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

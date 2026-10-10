@@ -32,7 +32,8 @@ class BarcodeScannerScreen extends StatefulWidget {
 
 class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   final _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
+    // Repeated detections allow us to ignore one-off false positives.
+    detectionSpeed: DetectionSpeed.normal,
     formats: const [
       BarcodeFormat.ean13,
       BarcodeFormat.ean8,
@@ -46,6 +47,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
   bool _hasScanned = false; // mode field: cegah pop ganda
   final Map<String, DateTime> _lastSeen = {}; // cooldown per kode
+  String? _candidateBarcode;
+  int _candidateHits = 0;
+  DateTime? _candidateLastSeen;
 
   // Mode count: satu barcode terkunci + jumlah scan
   String? _countBarcode;
@@ -83,8 +87,20 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   }
 
   void _onDetect(BarcodeCapture capture) {
-    final value = capture.barcodes.firstOrNull?.rawValue?.trim();
+    final value = _selectCandidate(capture);
     if (value == null || value.isEmpty) return;
+
+    final now = DateTime.now();
+    if (_candidateBarcode == value &&
+        _candidateLastSeen != null &&
+        now.difference(_candidateLastSeen!).inMilliseconds <= 900) {
+      _candidateHits++;
+    } else {
+      _candidateBarcode = value;
+      _candidateHits = 1;
+    }
+    _candidateLastSeen = now;
+    if (_candidateHits < 2) return;
 
     switch (widget.mode) {
       case ScanMode.field:
@@ -103,6 +119,44 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         _handleCount(value);
         return;
     }
+  }
+
+  String? _selectCandidate(BarcodeCapture capture) {
+    final candidates = capture.barcodes
+        .where((barcode) => barcode.rawValue?.trim().isNotEmpty ?? false)
+        .toList();
+    if (candidates.isEmpty) return null;
+
+    // Prefer retail formats when a frame contains several different codes.
+    int formatPriority(Barcode barcode) => switch (barcode.format) {
+          BarcodeFormat.ean13 ||
+          BarcodeFormat.ean8 ||
+          BarcodeFormat.upcA ||
+          BarcodeFormat.upcE => 0,
+          BarcodeFormat.code128 || BarcodeFormat.code39 => 1,
+          BarcodeFormat.qrCode => 2,
+          _ => 3,
+        };
+
+    Offset centerOf(Barcode barcode) {
+      if (barcode.corners.isEmpty) return Offset.zero;
+      return barcode.corners.reduce((a, b) => a + b) /
+          barcode.corners.length.toDouble();
+    }
+
+    candidates.sort((a, b) {
+      final formatOrder = formatPriority(a).compareTo(formatPriority(b));
+      if (formatOrder != 0) return formatOrder;
+      final center = Offset(capture.size.width / 2, capture.size.height / 2);
+      final aCenter = centerOf(a);
+      final bCenter = centerOf(b);
+      if (aCenter == Offset.zero) return bCenter == Offset.zero ? 0 : 1;
+      if (bCenter == Offset.zero) return -1;
+      return (aCenter - center).distanceSquared
+          .compareTo((bCenter - center).distanceSquared);
+    });
+
+    return candidates.first.rawValue?.trim();
   }
 
   void _handleCount(String value) {
@@ -188,7 +242,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          MobileScanner(controller: _controller, onDetect: _onDetect),
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final scanWindow = Rect.fromCenter(
+                  center: Offset(
+                    constraints.maxWidth / 2,
+                    constraints.maxHeight / 2,
+                  ),
+                  width: 280,
+                  height: 180,
+                );
+                return MobileScanner(
+                  controller: _controller,
+                  onDetect: _onDetect,
+                  scanWindow: scanWindow,
+                );
+              },
+            ),
+          ),
 
           // Bingkai pemindai
           Center(
