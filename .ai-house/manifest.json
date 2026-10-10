@@ -1,22 +1,33 @@
 {
   "schemaVersion": 1,
   "tool": "ai-software-house-rules-engine",
-  "installedVersion": "0.1.1",
-  "installedAt": "2026-10-10T02:25:25.243Z",
-  "source": "C:\\Program Codding\\ai-software-house-rules-engine-v0.1.1\\ai-software-house-rules-engine",
+  "installedVersion": "0.1.2",
+  "installedAt": "2026-10-10T03:30:43.283Z",
+  "source": "https://github.com/pradanadimas534/ai-software-house-rules-engine.git",
   "skills": [
-    "planning",
     "software-house",
+    "planning",
     "testing",
-    "code-review"
+    "code-review",
+    "ui-ux",
+    "frontend",
+    "backend",
+    "database",
+    "performance",
+    "documentation"
   ],
   "adapter": "none",
   "managedFiles": {
-    "AGENTS.md": "4c8e370e7c8841effc4e17256c2d02b2b6b49a9d28d78a13da7e279d54ebd3e9",
-    ".ai-house/skills/planning/SKILL.md": "25cc6bd61f3a15d0103accad6dbb5cca32de0d8b781b43f9e3d557e83d09ee93",
+    "AGENTS.md": "062719ac602387be2faa81d4eefa414eef4a384d02c0236221a6d35b876b65b4",
     ".ai-house/skills/software-house/SKILL.md": "402de9852143af48885ace1e2e1571f4148a8e1c08af2021b545fefe9ae6c3c6",
+    ".ai-house/skills/planning/SKILL.md": "25cc6bd61f3a15d0103accad6dbb5cca32de0d8b781b43f9e3d557e83d09ee93",
     ".ai-house/skills/testing/SKILL.md": "6838a14b6607f55ea03f977160ab2fb47bf56034ed737254bb85b7fe1247b267",
-    ".ai-house/skills/code-review/SKILL.md": "713dd341bf2a2a0536824f1231bf383464559027014ff7e1620b64abf567303b"
-  },
-  "updatedAt": "2026-10-10T02:44:39.624Z"
+    ".ai-house/skills/code-review/SKILL.md": "713dd341bf2a2a0536824f1231bf383464559027014ff7e1620b64abf567303b",
+    ".ai-house/skills/ui-ux/SKILL.md": "996b41e19d231fd2e8d159cd4f08e04a97a8fc922f9faaf085e2cb060cafd5ba",
+    ".ai-house/skills/frontend/SKILL.md": "94a925c5d345d87d3cdcdb989adb0a49a28f6b4290307f29577d9ba81b54f0a9",
+    ".ai-house/skills/backend/SKILL.md": "fcac4e2043d892633b8056e308529dfe443dd4598beb8260a5559de584e28d32",
+    ".ai-house/skills/database/SKILL.md": "e0354682f2603169709dacb9302f67fd9c098ea9a5b858e4550091c8b4dca482",
+    ".ai-house/skills/performance/SKILL.md": "d4aa1b5bf87b8c12e356c1404e5eafaa5ce830f3a42e5d372186c5c5d67c7683",
+    ".ai-house/skills/documentation/SKILL.md": "e5ad19697939fe445008e7016f64039ac4562d662f24a3ffeae6c0fbefc10438"
+  }
 }

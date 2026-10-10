@@ -79,11 +79,16 @@ A task is done only when:
 The skills selected during setup are installed in `.ai-house/skills/`. Read the relevant `SKILL.md` before work in that area. The software-house and planning skills define the general workflow; specialist skills add focused constraints and do not override this file's safety rules.
 
 Selected skill files:
-
-- `.ai-house/skills/planning/SKILL.md`
 - `.ai-house/skills/software-house/SKILL.md`
+- `.ai-house/skills/planning/SKILL.md`
 - `.ai-house/skills/testing/SKILL.md`
 - `.ai-house/skills/code-review/SKILL.md`
+- `.ai-house/skills/ui-ux/SKILL.md`
+- `.ai-house/skills/frontend/SKILL.md`
+- `.ai-house/skills/backend/SKILL.md`
+- `.ai-house/skills/database/SKILL.md`
+- `.ai-house/skills/performance/SKILL.md`
+- `.ai-house/skills/documentation/SKILL.md`
 
 
 ## Conflict resolution
